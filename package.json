@@ -1,0 +1,42 @@
+{
+  "name": "umbra-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@cofhe/react": "latest",
+    "@cofhe/sdk": "latest",
+    "@radix-ui/react-dialog": "latest",
+    "@radix-ui/react-progress": "latest",
+    "@radix-ui/react-select": "latest",
+    "@radix-ui/react-slider": "latest",
+    "@radix-ui/react-tooltip": "latest",
+    "@rainbow-me/rainbowkit": "^2",
+    "@reineira-os/sdk": "latest",
+    "@tanstack/react-query": "^5",
+    "clsx": "^2",
+    "ethers": "^6",
+    "framer-motion": "^11",
+    "lucide-react": "^0.400.0",
+    "next": "14.2.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "tailwind-merge": "^2",
+    "viem": "^2",
+    "wagmi": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10",
+    "postcss": "^8",
+    "tailwindcss": "^3.4",
+    "typescript": "^5"
+  }
+}
