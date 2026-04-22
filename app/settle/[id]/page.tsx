@@ -294,7 +294,7 @@ export default function SettlementPage() {
                     View Policy
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     className="flex-1"
                     onClick={() => router.push("/dashboard")}
                   >
