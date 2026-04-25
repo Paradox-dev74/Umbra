@@ -5,8 +5,13 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import { getFhenixClient, encryptPolicyTerms } from "@/lib/fhenix";
-import type { BfheClient } from "@cofhe/sdk";
+import {
+  getFhenixClient,
+  setFhenixClient,
+  encryptPolicyTerms,
+} from "@/lib/fhenix";
+import type { EncryptedPolicyInputs } from "@/lib/fhenix";
+import type { CofheClient } from "@cofhe/sdk";
 
 interface EncryptionState {
   isEncrypting: boolean;
@@ -22,13 +27,6 @@ interface PolicyEncryptionParams {
   expiryBlock: number;
 }
 
-interface EncryptedPolicyTerms {
-  encCoverage: Uint8Array;
-  encThreshold: Uint8Array;
-  encPremium: Uint8Array;
-  encExpiry: Uint8Array;
-}
-
 export function useFhenix() {
   const [state, setState] = useState<EncryptionState>({
     isEncrypting: false,
@@ -37,13 +35,17 @@ export function useFhenix() {
     clientReady: false,
   });
 
-  const clientRef = useRef<BfheClient | null>(null);
+  const clientRef = useRef<CofheClient | null>(null);
 
-  const initializeClient = useCallback(async (provider?: unknown) => {
+  const initializeClient = useCallback(async (client?: CofheClient) => {
     setState((prev) => ({ ...prev, isInitializing: true, error: null }));
     try {
-      const client = await getFhenixClient(provider);
-      clientRef.current = client;
+      if (client) {
+        setFhenixClient(client);
+        clientRef.current = client;
+      } else {
+        clientRef.current = await getFhenixClient();
+      }
       setState((prev) => ({
         ...prev,
         isInitializing: false,
@@ -63,7 +65,7 @@ export function useFhenix() {
   const encryptPolicy = useCallback(
     async (
       params: PolicyEncryptionParams
-    ): Promise<EncryptedPolicyTerms> => {
+    ): Promise<EncryptedPolicyInputs> => {
       if (!clientRef.current) {
         await initializeClient();
       }

@@ -1,62 +1,38 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Privara (ReineiraOS) Settlement Client
+   Uses @reineira-os/sdk ReineiraSDK for confidential payouts.
+   In demo mode these functions are not called.
    ═══════════════════════════════════════════════════════════ */
 
-import { ReineiraClient } from "@reineira-os/sdk";
+import { ReineiraSDK, type SDKConfig } from "@reineira-os/sdk";
 import type { SettlementRequest, SettlementResult } from "./types";
 
-let privateraInstance: ReineiraClient | null = null;
-
-interface PrivaraConfig {
-  apiKey: string;
-  network: "testnet" | "mainnet";
-}
+let privaraInstance: ReineiraSDK | null = null;
 
 export async function getPrivaraClient(
-  config: PrivaraConfig
-): Promise<ReineiraClient> {
-  if (!privateraInstance) {
-    privateraInstance = new ReineiraClient({
-      apiKey: config.apiKey,
-      network: config.network,
-    });
+  config: SDKConfig
+): Promise<ReineiraSDK> {
+  if (!privaraInstance) {
+    privaraInstance = ReineiraSDK.create(config);
+    await privaraInstance.initialize();
   }
-  return privateraInstance;
+  return privaraInstance;
 }
 
 export async function executeInsurancePayout(
-  client: ReineiraClient,
+  sdk: ReineiraSDK,
   request: SettlementRequest
 ): Promise<SettlementResult> {
-  const result = await client.settlement.execute({
-    referenceId: request.policyId,
-    from: request.enterpriseAddress,
-    to: request.beneficiaryAddress,
-    encryptedAmount: request.encryptedCoverageAmount,
-    metadata: {
-      type: "parametric_insurance_payout",
-      policyHash: request.policyReferenceHash,
-      category: request.riskCategory,
-    },
-    confidential: true,
+  const escrow = await sdk.escrow.create({
+    amount: sdk.usdc(request.encryptedCoverageAmount),
+    owner: request.beneficiaryAddress,
   });
 
   return {
-    transactionHash: result.transactionHash,
-    timestamp: result.timestamp,
+    transactionHash: escrow.createTx?.hash ?? "",
+    timestamp: Date.now(),
     status: "completed",
     privacyNote:
       "Transfer amount and counterparties are confidential per Privara privacy guarantees",
-  };
-}
-
-export async function checkSettlementStatus(
-  client: ReineiraClient,
-  policyId: string
-): Promise<{ status: string; txHash?: string }> {
-  const status = await client.settlement.getStatus(policyId);
-  return {
-    status: status.state,
-    txHash: status.transactionHash,
   };
 }

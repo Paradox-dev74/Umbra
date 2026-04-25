@@ -1,72 +1,64 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Fhenix FHE Client Integration
+   Uses @cofhe/sdk CofheClient for FHE operations.
+   In demo mode these functions are not called — mock
+   decrypt delays are used instead.
    ═══════════════════════════════════════════════════════════ */
 
-import { BfheClient } from "@cofhe/sdk";
+import type {
+  CofheClient,
+  EncryptedUint64Input,
+  EncryptedUint32Input,
+} from "@cofhe/sdk";
+import { Encryptable } from "@cofhe/sdk";
 
-let fhenixClientInstance: BfheClient | null = null;
+let fhenixClientInstance: CofheClient | null = null;
 
-export async function getFhenixClient(provider: unknown): Promise<BfheClient> {
+export async function getFhenixClient(
+  _provider?: unknown
+): Promise<CofheClient> {
   if (!fhenixClientInstance) {
-    fhenixClientInstance = new BfheClient(provider);
-    await fhenixClientInstance.init();
+    throw new Error(
+      "CofheClient must be initialised via @cofhe/react before use. " +
+        "In demo mode this function should not be called."
+    );
   }
   return fhenixClientInstance;
 }
 
-export async function encryptCoverageAmount(
-  client: BfheClient,
-  amountUsdc: bigint
-): Promise<{ encryptedInput: Uint8Array; hash: string }> {
-  const encrypted = await client.encrypt_uint64(amountUsdc);
-  return {
-    encryptedInput: encrypted,
-    hash: `enc_${amountUsdc.toString().slice(0, 4)}...`,
-  };
+export function setFhenixClient(client: CofheClient): void {
+  fhenixClientInstance = client;
 }
 
-export async function encryptThreshold(
-  client: BfheClient,
-  value: number
-): Promise<{ encryptedInput: Uint8Array; hash: string }> {
-  const encrypted = await client.encrypt_uint32(value);
-  return {
-    encryptedInput: encrypted,
-    hash: `enc_${value.toString().slice(0, 3)}...`,
-  };
+export interface EncryptedPolicyInputs {
+  encCoverage: EncryptedUint64Input;
+  encThreshold: EncryptedUint32Input;
+  encPremium: EncryptedUint32Input;
+  encExpiry: EncryptedUint32Input;
 }
 
 export async function encryptPolicyTerms(
-  client: BfheClient,
+  client: CofheClient,
   params: {
     coverageAmountUsdc: bigint;
     triggerThreshold: number;
     premiumUsdc: number;
     expiryBlock: number;
   }
-): Promise<{
-  encCoverage: Uint8Array;
-  encThreshold: Uint8Array;
-  encPremium: Uint8Array;
-  encExpiry: Uint8Array;
-}> {
-  const [encCoverage, encThreshold, encPremium, encExpiry] = await Promise.all([
-    client.encrypt_uint64(params.coverageAmountUsdc),
-    client.encrypt_uint32(params.triggerThreshold),
-    client.encrypt_uint32(params.premiumUsdc),
-    client.encrypt_uint32(params.expiryBlock),
-  ]);
+): Promise<EncryptedPolicyInputs> {
+  const encrypted = await client
+    .encryptInputs([
+      Encryptable.uint64(params.coverageAmountUsdc),
+      Encryptable.uint32(BigInt(params.triggerThreshold)),
+      Encryptable.uint32(BigInt(params.premiumUsdc)),
+      Encryptable.uint32(BigInt(params.expiryBlock)),
+    ])
+    .execute();
 
-  return { encCoverage, encThreshold, encPremium, encExpiry };
-}
-
-export async function sealedDecryptParameter(
-  client: BfheClient,
-  contractAddress: string
-): Promise<{ permit: unknown; publicKey: string }> {
-  const permit = await client.generatePermit(contractAddress);
   return {
-    permit,
-    publicKey: (permit as { publicKey: string }).publicKey,
+    encCoverage: encrypted[0] as EncryptedUint64Input,
+    encThreshold: encrypted[1] as EncryptedUint32Input,
+    encPremium: encrypted[2] as EncryptedUint32Input,
+    encExpiry: encrypted[3] as EncryptedUint32Input,
   };
 }

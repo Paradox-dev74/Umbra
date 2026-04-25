@@ -164,7 +164,7 @@ export const POLICY_STATUS_CONFIG: Record<
 
 export const DEMO_POLICIES = [
   {
-    id: 1n,
+    id: BigInt(1),
     enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
     beneficiary: "0xDEF0000000000000000000000000000000005678" as `0x${string}`,
     riskCategory: 0,
@@ -178,7 +178,7 @@ export const DEMO_POLICIES = [
     expiryBlock: 9999999,
   },
   {
-    id: 2n,
+    id: BigInt(2),
     enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
     beneficiary: "0x9876000000000000000000000000000000005432" as `0x${string}`,
     riskCategory: 2,
@@ -192,7 +192,7 @@ export const DEMO_POLICIES = [
     expiryBlock: 9999999,
   },
   {
-    id: 3n,
+    id: BigInt(3),
     enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
     beneficiary: "0xBBBB000000000000000000000000000000003333" as `0x${string}`,
     riskCategory: 3,
@@ -206,7 +206,7 @@ export const DEMO_POLICIES = [
     expiryBlock: 8888888,
   },
   {
-    id: 4n,
+    id: BigInt(4),
     enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
     beneficiary: "0xCCCC000000000000000000000000000000004444" as `0x${string}`,
     riskCategory: 4,

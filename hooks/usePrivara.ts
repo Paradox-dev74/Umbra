@@ -26,7 +26,8 @@ export function usePrivara() {
       setState((prev) => ({ ...prev, isSettling: true, error: null }));
       try {
         const client = await getPrivaraClient({
-          apiKey: process.env.NEXT_PUBLIC_PRIVARA_API_KEY ?? "",
+          privateKey: process.env.NEXT_PUBLIC_PRIVARA_API_KEY ?? "",
+          rpcUrl: "https://api.helium.fhenix.zone",
           network: "testnet",
         });
         const result = await executeInsurancePayout(client, request);
