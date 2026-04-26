@@ -3,10 +3,14 @@
    ═══════════════════════════════════════════════════════════ */
 
 import { defineChain } from "viem";
+import { sepolia } from "viem/chains";
+
+export { sepolia };
 
 export const UMBRA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_UMBRA_CONTRACT ??
   "0x0000000000000000000000000000000000000000") as `0x${string}`;
 
+// Fhenix Helium kept as legacy reference (CoFHE coprocessor now live on Ethereum Sepolia)
 export const FHENIX_HELIUM_CHAIN = defineChain({
   id: 8008135,
   name: "Fhenix Helium",

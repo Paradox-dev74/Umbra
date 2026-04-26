@@ -72,8 +72,7 @@ async function main() {
   const outPath = path.resolve(__dirname, "../deployment.json");
   fs.writeFileSync(outPath, JSON.stringify(deploymentInfo, null, 2));
   console.log("\n  Saved to deployment.json");
-  console.log('\n  Add to .env.local:\n  NEXT_PUBLIC_UMBRA_CONTRACT=' + address + '\n  NEXT_PUBLIC_UMBRA_V2=true\n  NEXT_PUBLIC_UMBRA_V3=true\n  NEXT_PUBLIC_UMBRA_V4=true');
-  console.log('\n  Deployer is trustedOracle — use this wallet to resolve policies.');
+  console.log('\n  Add to .env:\n  NEXT_PUBLIC_UMBRA_CONTRACT=' + address);
 }
 
 main().catch((err) => {

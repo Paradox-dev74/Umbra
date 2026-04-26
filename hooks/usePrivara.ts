@@ -1,10 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Privara Settlement Hook
+   Uses wagmi walletClient → walletClientToSigner for ReineiraSDK
    ═══════════════════════════════════════════════════════════ */
 
 "use client";
 
 import { useState, useCallback } from "react";
+import { useWalletClient } from "wagmi";
 import { getPrivaraClient, executeInsurancePayout } from "@/lib/privara";
 import type { SettlementRequest, SettlementResult } from "@/lib/types";
 
@@ -15,6 +17,7 @@ interface PrivaraState {
 }
 
 export function usePrivara() {
+  const { data: walletClient } = useWalletClient();
   const [state, setState] = useState<PrivaraState>({
     isSettling: false,
     error: null,
@@ -25,11 +28,7 @@ export function usePrivara() {
     async (request: SettlementRequest): Promise<SettlementResult> => {
       setState((prev) => ({ ...prev, isSettling: true, error: null }));
       try {
-        const client = await getPrivaraClient({
-          privateKey: process.env.NEXT_PUBLIC_PRIVARA_API_KEY ?? "",
-          rpcUrl: "https://api.helium.fhenix.zone",
-          network: "testnet",
-        });
+        const client = await getPrivaraClient({ walletClient: walletClient ?? undefined });
         const result = await executeInsurancePayout(client, request);
         setState((prev) => ({
           ...prev,
@@ -48,8 +47,9 @@ export function usePrivara() {
         throw e;
       }
     },
-    []
+    [walletClient]
   );
 
   return { ...state, settlePolicy };
 }
+

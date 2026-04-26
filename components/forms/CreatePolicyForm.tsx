@@ -1,19 +1,23 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Create Policy Form (Multi-Step)
-   4-step policy creation with FHE encryption animations
+   4-step policy creation — FHE encryption via @cofhe/react
    ═══════════════════════════════════════════════════════════ */
 
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAccount, useBlockNumber, useWriteContract } from "wagmi";
+import { keccak256, encodeAbiParameters, parseAbiParameters } from "viem";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { RISK_CATEGORIES, ORACLE_FEEDS } from "@/lib/constants";
+import { RISK_CATEGORIES, ORACLE_FEEDS, UMBRA_CONTRACT_ADDRESS } from "@/lib/constants";
+import { UMBRA_ABI } from "@/lib/abi";
+import { useFhenix } from "@/hooks/useFhenix";
 import type { CreatePolicyFormData, FormStep } from "@/lib/types";
-import { generatePolicyHash, sleep } from "@/lib/utils";
+import { generatePolicyHash } from "@/lib/utils";
 import {
   Lock,
   ArrowRight,
@@ -22,6 +26,7 @@ import {
   Shield,
   Sparkles,
   Zap,
+  ExternalLink,
 } from "lucide-react";
 
 const steps = [
@@ -52,6 +57,11 @@ interface EncryptFieldState {
 }
 
 export function CreatePolicyForm() {
+  const { address: connectedAddress } = useAccount();
+  const { data: blockNumber } = useBlockNumber({ watch: false });
+  const { encryptPolicy, clientReady, isEncrypting } = useFhenix();
+  const { writeContractAsync } = useWriteContract();
+
   const [currentStep, setCurrentStep] = useState<FormStep>(1);
   const [form, setForm] = useState<CreatePolicyFormData>(defaultForm);
   const [encryptStates, setEncryptStates] = useState<EncryptFieldState>({
@@ -63,6 +73,7 @@ export function CreatePolicyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [submitStage, setSubmitStage] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -105,18 +116,73 @@ export function CreatePolicyForm() {
   }, [form.coverageDurationDays, triggerEncryptAnimation]);
 
   const handleSubmit = useCallback(async () => {
+    if (!connectedAddress) {
+      alert("Connect your wallet first.");
+      return;
+    }
+    if (!clientReady) {
+      alert("CoFHE client not ready. Please wait a moment and try again.");
+      return;
+    }
+
     setSubmitting(true);
     setSubmitStage(1);
-    await sleep(1000);
-    setSubmitStage(2);
-    await sleep(1500);
-    setSubmitStage(3);
-    await sleep(1200);
-    setSubmitStage(4);
-    await sleep(800);
-    setSubmitting(false);
-    setSubmitted(true);
-  }, []);
+
+    try {
+      // Stage 1 → Stage 2: FHE encrypt all three terms
+      const coverageUsdc = BigInt(Math.round(parseFloat(form.coverageAmountUsdc || "0") * 1_000_000));
+      const premiumUsdc  = BigInt(Math.round(parseFloat(form.premiumUsdc || "0") * 1_000_000));
+      const threshold    = BigInt(Math.round(parseFloat(form.triggerThreshold || "0")));
+
+      setSubmitStage(2);
+      const encrypted = await encryptPolicy({
+        coverageAmountUsdc: coverageUsdc,
+        premiumUsdc,
+        triggerThreshold: threshold,
+      });
+
+      // Stage 3: Build contract call args
+      setSubmitStage(3);
+      const expiryBlock  = (blockNumber ?? 0n) + BigInt(Math.round(parseInt(form.coverageDurationDays || "90") * 7200));
+      const beneficiary  = (form.beneficiaryAddress || connectedAddress) as `0x${string}`;
+      const oracleFeed   = (ORACLE_FEEDS[form.oracleFeed]?.address ?? "0x0000000000000000000000000000000000000001") as `0x${string}`;
+
+      const policyHash = keccak256(
+        encodeAbiParameters(parseAbiParameters("string, address, uint256"), [
+          form.policyReferenceName || "Umbra Policy",
+          connectedAddress,
+          BigInt(Date.now()),
+        ])
+      );
+
+      // Stage 4: submit to Sepolia
+      setSubmitStage(4);
+      const hash = await writeContractAsync({
+        address: UMBRA_CONTRACT_ADDRESS,
+        abi: UMBRA_ABI,
+        functionName: "createPolicy",
+        args: [
+          beneficiary,
+          form.riskCategory as number,
+          oracleFeed,
+          expiryBlock,
+          encrypted.encCoverage  as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
+          encrypted.encPremium   as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
+          encrypted.encThreshold as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
+          policyHash,
+        ],
+      });
+
+      setTxHash(hash);
+      setSubmitted(true);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      alert(`Transaction failed: ${msg}`);
+    } finally {
+      setSubmitting(false);
+      setSubmitStage(0);
+    }
+  }, [connectedAddress, clientReady, form, blockNumber, encryptPolicy, writeContractAsync]);
 
   const renderEncryptedField = (
     label: string,
@@ -184,8 +250,19 @@ export function CreatePolicyForm() {
         </h2>
         <p className="text-umbra-muted mb-2">
           Your confidential parametric insurance policy has been encrypted and
-          submitted to Fhenix testnet.
+          submitted to Ethereum Sepolia with real FHE ciphertext terms.
         </p>
+        {txHash && (
+          <a
+            href={`https://sepolia.etherscan.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs text-umbra-blue font-mono mb-4 hover:underline"
+          >
+            {txHash.slice(0, 20)}...{txHash.slice(-8)}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
         <p className="text-xs text-umbra-muted font-mono mb-8">
           Policy Hash: {generatePolicyHash({ name: form.policyReferenceName, enterprise: "0xdemo", timestamp: Date.now() })}
         </p>
@@ -196,6 +273,7 @@ export function CreatePolicyForm() {
             setSubmitted(false);
             setCurrentStep(1);
             setForm(defaultForm);
+            setTxHash(null);
             setEncryptStates({
               coverage: "plain",
               threshold: "plain",
@@ -327,8 +405,8 @@ export function CreatePolicyForm() {
                         FHE Encryption Zone
                       </h3>
                       <p className="text-xs text-umbra-muted">
-                        Values encrypted client-side via Fhenix SDK before
-                        touching the blockchain.
+                        Values encrypted client-side via @cofhe/sdk before
+                        touching Ethereum Sepolia. Threshold is never revealed on-chain.
                       </p>
                     </div>
                   </div>
@@ -596,18 +674,10 @@ export function CreatePolicyForm() {
                 {submitting ? (
                   <div className="space-y-4 py-4">
                     {[
-                      { stage: 1, text: "Initializing Fhenix client...", icon: Zap },
-                      {
-                        stage: 2,
-                        text: "Encrypting 4 policy parameters...",
-                        icon: Lock,
-                      },
-                      {
-                        stage: 3,
-                        text: "Submitting to Fhenix testnet...",
-                        icon: Sparkles,
-                      },
-                      { stage: 4, text: "Policy Created! ✓", icon: Check },
+                      { stage: 1, text: "Connecting to CoFHE client...", icon: Zap },
+                      { stage: 2, text: "FHE-encrypting coverage, premium & threshold...", icon: Lock },
+                      { stage: 3, text: "Building transaction...", icon: Sparkles },
+                      { stage: 4, text: "Waiting for Sepolia confirmation...", icon: Check },
                     ].map((s) => (
                       <motion.div
                         key={s.stage}
@@ -657,9 +727,10 @@ export function CreatePolicyForm() {
                     size="lg"
                     className="w-full"
                     onClick={handleSubmit}
+                    disabled={!clientReady || isEncrypting}
                     glow
                   >
-                    Encrypt & Sign Policy
+                    {!clientReady ? "Waiting for CoFHE..." : "Encrypt & Sign Policy"}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}

@@ -1,96 +1,77 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Fhenix FHE Encryption Hook
+   Uses @cofhe/react hooks — client is managed by CofheProvider.
    ═══════════════════════════════════════════════════════════ */
 
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
+import { useCofheClient } from "@cofhe/react";
 import {
-  getFhenixClient,
-  setFhenixClient,
   encryptPolicyTerms,
+  decryptHandle,
+  decryptBoolHandle,
+  setFhenixClient,
 } from "@/lib/fhenix";
 import type { EncryptedPolicyInputs } from "@/lib/fhenix";
-import type { CofheClient } from "@cofhe/sdk";
-
-interface EncryptionState {
-  isEncrypting: boolean;
-  isInitializing: boolean;
-  error: string | null;
-  clientReady: boolean;
-}
 
 interface PolicyEncryptionParams {
   coverageAmountUsdc: bigint;
-  triggerThreshold: number;
-  premiumUsdc: number;
-  expiryBlock: number;
+  premiumUsdc: bigint;
+  triggerThreshold: bigint;
 }
 
 export function useFhenix() {
-  const [state, setState] = useState<EncryptionState>({
-    isEncrypting: false,
-    isInitializing: false,
-    error: null,
-    clientReady: false,
-  });
+  const client = useCofheClient();
+  const [isEncrypting, setIsEncrypting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const clientRef = useRef<CofheClient | null>(null);
-
-  const initializeClient = useCallback(async (client?: CofheClient) => {
-    setState((prev) => ({ ...prev, isInitializing: true, error: null }));
-    try {
-      if (client) {
-        setFhenixClient(client);
-        clientRef.current = client;
-      } else {
-        clientRef.current = await getFhenixClient();
-      }
-      setState((prev) => ({
-        ...prev,
-        isInitializing: false,
-        clientReady: true,
-      }));
-    } catch (e: unknown) {
-      const message =
-        e instanceof Error ? e.message : "Failed to initialize Fhenix";
-      setState((prev) => ({
-        ...prev,
-        isInitializing: false,
-        error: message,
-      }));
-    }
-  }, []);
+  // Sync the global singleton so non-hook code can access the client
+  if (client) setFhenixClient(client);
 
   const encryptPolicy = useCallback(
-    async (
-      params: PolicyEncryptionParams
-    ): Promise<EncryptedPolicyInputs> => {
-      if (!clientRef.current) {
-        await initializeClient();
-      }
-      setState((prev) => ({ ...prev, isEncrypting: true, error: null }));
+    async (params: PolicyEncryptionParams): Promise<EncryptedPolicyInputs> => {
+      if (!client) throw new Error("CoFHE client not ready");
+      setIsEncrypting(true);
+      setError(null);
       try {
-        const result = await encryptPolicyTerms(clientRef.current!, params);
-        setState((prev) => ({ ...prev, isEncrypting: false }));
+        const result = await encryptPolicyTerms(client, params);
         return result;
       } catch (e: unknown) {
-        const message =
-          e instanceof Error ? e.message : "Encryption failed";
-        setState((prev) => ({
-          ...prev,
-          isEncrypting: false,
-          error: message,
-        }));
+        const message = e instanceof Error ? e.message : "Encryption failed";
+        setError(message);
         throw e;
+      } finally {
+        setIsEncrypting(false);
       }
     },
-    [initializeClient]
+    [client]
+  );
+
+  const decryptValue = useCallback(
+    async (ctHash: `0x${string}`): Promise<bigint> => {
+      if (!client) throw new Error("CoFHE client not ready");
+      return decryptHandle(client, ctHash);
+    },
+    [client]
+  );
+
+  const decryptBool = useCallback(
+    async (ctHash: `0x${string}`): Promise<boolean> => {
+      if (!client) throw new Error("CoFHE client not ready");
+      return decryptBoolHandle(client, ctHash);
+    },
+    [client]
   );
 
   return {
-    ...state,
-    initializeClient,
+    clientReady: !!client,
+    isConnecting: !client,
+    isEncrypting,
+    error,
     encryptPolicy,
+    decryptValue,
+    decryptBool,
   };
 }
+

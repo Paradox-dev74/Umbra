@@ -131,9 +131,8 @@ export default function PolicyDetailPage() {
                     Coverage Amount
                   </label>
                   <EncryptedValue
-                    value={null}
                     unit="USDC"
-                    onDecryptRequest={mockDecrypt(policy.coverageAmount, "$")}
+                    format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                   />
                 </div>
 
@@ -143,9 +142,8 @@ export default function PolicyDetailPage() {
                     Premium Paid
                   </label>
                   <EncryptedValue
-                    value={null}
                     unit="USDC"
-                    onDecryptRequest={mockDecrypt(policy.premium, "$")}
+                    format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                   />
                 </div>
 
@@ -155,9 +153,8 @@ export default function PolicyDetailPage() {
                     Trigger Threshold
                   </label>
                   <EncryptedValue
-                    value={null}
                     unit={oracleFeed?.unit ?? ""}
-                    onDecryptRequest={mockDecrypt(policy.triggerThreshold)}
+                    format={(raw) => raw.toString()}
                   />
                 </div>
               </div>

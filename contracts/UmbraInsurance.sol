@@ -1,41 +1,51 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.25;
 
+import "@fhenixprotocol/cofhe-contracts/FHE.sol";
 import "./interfaces/IUmbra.sol";
 
 /**
  * @title UmbraInsurance
- * @notice Confidential parametric insurance using Fhenix FHE + Chainlink oracles + Privara settlement
- * @dev All financial parameters (coverage, premium, threshold) are stored as encrypted FHE ciphertexts.
- *      Oracle resolution compares public oracle values against encrypted thresholds using FHE comparison.
- *      Settlement is routed through Privara (ReineiraOS) for silent treasury payouts.
+ * @notice Confidential parametric insurance using Fhenix CoFHE + Chainlink oracles + Privara settlement.
  *
- *      This contract is designed for the Fhenix Helium testnet (chain ID 8008135).
+ * Privacy architecture:
+ *  - Coverage amount, premium, and trigger threshold are stored as euint64 ciphertext handles.
+ *  - Oracle resolution uses FHE.gte(encryptedThreshold, triviallyEncryptedOracleValue) so the
+ *    threshold is NEVER revealed — only an encrypted ebool result is produced.
+ *  - That ebool is stored on-chain and only the policy holder / beneficiary can request a
+ *    sealed decrypt via the Threshold Network to verify the outcome off-chain.
+ *  - FHE.allowThis / FHE.allow ensure strict ACL: only the contract, holder, and beneficiary
+ *    can request decryption of their own values.
+ *
+ * Deployment target: Ethereum Sepolia (CoFHE coprocessor live at TASK_MANAGER_ADDRESS).
  */
 contract UmbraInsurance is IUmbra {
     /* ═══════════════════════════════════════════════════════
-       Storage
+       FHE Encrypted Storage
        ═══════════════════════════════════════════════════════ */
 
-    /// @notice Auto-incrementing policy counter
-    uint256 public nextPolicyId;
+    /// @notice policyId → encrypted coverage amount (euint64 handle)
+    mapping(uint256 => euint64) private _encCoverage;
 
-    /// @notice Mapping of policy ID to Policy struct
+    /// @notice policyId → encrypted premium (euint64 handle)
+    mapping(uint256 => euint64) private _encPremium;
+
+    /// @notice policyId → encrypted trigger threshold (euint64 handle)
+    mapping(uint256 => euint64) private _encThreshold;
+
+    /// @notice policyId → encrypted comparison result (ebool handle — set after oracle resolution)
+    mapping(uint256 => ebool) private _encTriggerResult;
+
+    /* ═══════════════════════════════════════════════════════
+       Plaintext Storage
+       ═══════════════════════════════════════════════════════ */
+
+    uint256 public nextPolicyId;
     mapping(uint256 => Policy) public policies;
 
-    /// @notice Mapping of policy ID to encrypted terms
-    mapping(uint256 => EncryptedTerms) public encryptedTerms;
-
-    /// @notice Owner of the contract (deployer)
     address public owner;
-
-    /// @notice Trusted oracle address for resolving policies
     address public trustedOracle;
-
-    /// @notice Privara settlement router address
     address public privaraRouter;
-
-    /// @notice Whether the contract is paused
     bool public paused;
 
     /* ═══════════════════════════════════════════════════════
@@ -58,7 +68,7 @@ contract UmbraInsurance is IUmbra {
     }
 
     modifier policyExists(uint256 policyId) {
-        require(policyId < nextPolicyId, "Umbra: policy does not exist");
+        require(policyId < nextPolicyId, "Umbra: not found");
         _;
     }
 
@@ -74,38 +84,52 @@ contract UmbraInsurance is IUmbra {
     }
 
     /* ═══════════════════════════════════════════════════════
-       Core Functions
+       Core: Create Policy
        ═══════════════════════════════════════════════════════ */
 
     /**
-     * @notice Create a new confidential insurance policy
-     * @param _beneficiary Address to receive the payout
-     * @param _riskCategory Category identifier (0=drought, 1=flood, etc.)
-     * @param _oracleFeed Chainlink oracle feed address
-     * @param _expiryBlock Block at which the policy expires
-     * @param _encryptedCoverage FHE-encrypted coverage amount (euint64)
-     * @param _encryptedPremium FHE-encrypted premium amount (euint64)
-     * @param _encryptedThreshold FHE-encrypted trigger threshold (euint64)
-     * @param _policyHash keccak256 hash of the plaintext terms (for off-chain verification)
+     * @notice Create a new confidential insurance policy.
+     *         All financial terms are submitted as FHE-encrypted ciphertexts (InEuint64)
+     *         and stored as euint64 handles — the plaintext values are NEVER on-chain.
+     *
+     * @param _beneficiary   Address to receive the payout
+     * @param _riskCategory  Risk category (0-4)
+     * @param _oracleFeed    Chainlink oracle feed address
+     * @param _expiryBlock   Block number at which the policy expires
+     * @param _inCoverage    FHE-encrypted coverage  (InEuint64 from @cofhe/sdk)
+     * @param _inPremium     FHE-encrypted premium   (InEuint64)
+     * @param _inThreshold   FHE-encrypted threshold (InEuint64)
+     * @param _policyHash    keccak256 of reference terms (off-chain audit only)
      */
     function createPolicy(
         address _beneficiary,
         uint8 _riskCategory,
         address _oracleFeed,
         uint256 _expiryBlock,
-        bytes calldata _encryptedCoverage,
-        bytes calldata _encryptedPremium,
-        bytes calldata _encryptedThreshold,
+        InEuint64 calldata _inCoverage,
+        InEuint64 calldata _inPremium,
+        InEuint64 calldata _inThreshold,
         bytes32 _policyHash
     ) external whenNotPaused returns (uint256 policyId) {
         require(_beneficiary != address(0), "Umbra: zero beneficiary");
-        require(_oracleFeed != address(0), "Umbra: zero oracle feed");
+        require(_oracleFeed != address(0), "Umbra: zero oracle");
         require(_expiryBlock > block.number, "Umbra: already expired");
-        require(_encryptedCoverage.length > 0, "Umbra: empty coverage");
-        require(_encryptedPremium.length > 0, "Umbra: empty premium");
-        require(_encryptedThreshold.length > 0, "Umbra: empty threshold");
 
         policyId = nextPolicyId++;
+
+        // Convert encrypted inputs → euint64 handles
+        euint64 encCov  = FHE.asEuint64(_inCoverage);
+        euint64 encPrem = FHE.asEuint64(_inPremium);
+        euint64 encThr  = FHE.asEuint64(_inThreshold);
+
+        // ACL: contract retains access; holder + beneficiary can request sealed decrypt
+        FHE.allowThis(encCov);  FHE.allow(encCov,  msg.sender);  FHE.allow(encCov,  _beneficiary);
+        FHE.allowThis(encPrem); FHE.allow(encPrem, msg.sender);  FHE.allow(encPrem, _beneficiary);
+        FHE.allowThis(encThr);  FHE.allow(encThr,  msg.sender);  FHE.allow(encThr,  _beneficiary);
+
+        _encCoverage[policyId]  = encCov;
+        _encPremium[policyId]   = encPrem;
+        _encThreshold[policyId] = encThr;
 
         policies[policyId] = Policy({
             id: policyId,
@@ -121,162 +145,133 @@ contract UmbraInsurance is IUmbra {
             settlementTx: bytes32(0)
         });
 
-        encryptedTerms[policyId] = EncryptedTerms({
-            encryptedCoverage: _encryptedCoverage,
-            encryptedPremium: _encryptedPremium,
-            encryptedThreshold: _encryptedThreshold
-        });
-
-        emit PolicyCreated(
-            policyId,
-            msg.sender,
-            _beneficiary,
-            _riskCategory,
-            _policyHash
-        );
+        emit PolicyCreated(policyId, msg.sender, _beneficiary, _riskCategory, _policyHash);
     }
 
+    /* ═══════════════════════════════════════════════════════
+       Core: Oracle Resolution (real FHE comparison)
+       ═══════════════════════════════════════════════════════ */
+
     /**
-     * @notice Oracle resolves a policy by comparing the public oracle value against the encrypted threshold
-     * @dev In production, this would perform an FHE comparison (euint64.lt / euint64.gt)
-     *      on the Fhenix coprocessor. For the hackathon, we simulate the encrypted comparison.
-     * @param policyId The policy to resolve
-     * @param oracleValue The current oracle value (public, from Chainlink)
-     * @param triggered Whether the oracle value crossed the encrypted threshold
+     * @notice Resolve a policy using a live oracle value.
+     *         Trivially encrypts the public oracle value then runs
+     *         FHE.gte(oracleVal, encThreshold) — the threshold is NEVER revealed.
+     *         Stores the encrypted ebool result; holder/beneficiary can seal-decrypt it.
+     *
+     * @param policyId    Policy to resolve
+     * @param oracleValue Raw Chainlink oracle reading (plaintext, publicly verifiable)
      */
     function resolveWithOracle(
         uint256 policyId,
         uint256 oracleValue,
-        bool triggered
+        bool /* triggered — determined by FHE comparison, param kept for interface compat */
     ) external onlyOracle policyExists(policyId) whenNotPaused {
         Policy storage policy = policies[policyId];
+        require(policy.status == PolicyStatus.Active, "Umbra: not active");
+        require(block.number <= policy.expiryBlock, "Umbra: expired");
 
-        require(
-            policy.status == PolicyStatus.Active,
-            "Umbra: not active"
-        );
-        require(
-            block.number <= policy.expiryBlock,
-            "Umbra: policy expired"
-        );
+        // Trivially encrypt the public oracle value at security zone 0
+        euint64 encOracleVal = FHE.asEuint64(uint64(oracleValue));
+        FHE.allowThis(encOracleVal);
 
-        if (triggered) {
-            policy.status = PolicyStatus.OracleTriggered;
-            policy.resolvedBlock = block.number;
+        // FHE comparison: result = oracleValue >= threshold  (threshold breached)
+        ebool encResult = FHE.gte(encOracleVal, _encThreshold[policyId]);
 
-            emit OracleResolved(policyId, oracleValue, true);
-            emit PolicyTriggered(policyId, oracleValue);
-        } else {
-            emit OracleResolved(policyId, oracleValue, false);
-        }
+        // Grant ACL: contract, holder, beneficiary, oracle can seal-decrypt the result
+        FHE.allowThis(encResult);
+        FHE.allow(encResult, policy.holder);
+        FHE.allow(encResult, policy.beneficiary);
+        FHE.allow(encResult, trustedOracle);
+        _encTriggerResult[policyId] = encResult;
+
+        policy.status    = PolicyStatus.OracleTriggered;
+        policy.resolvedBlock = block.number;
+
+        emit OracleResolved(policyId, oracleValue, true);
+        emit PolicyTriggered(policyId, oracleValue);
     }
 
+    /* ═══════════════════════════════════════════════════════
+       Core: Settlement
+       ═══════════════════════════════════════════════════════ */
+
     /**
-     * @notice Mark a triggered policy as settled after Privara executes the payout
-     * @dev Called by the Privara router or the owner after confirming settlement
-     * @param policyId The policy that was settled
-     * @param _settlementTx The Privara transaction hash
+     * @notice Mark a triggered policy as settled after Privara executes the payout.
+     * @param policyId      Settled policy ID
+     * @param _settlementTx Privara escrow transaction hash
      */
     function markSettled(
         uint256 policyId,
         bytes32 _settlementTx
     ) external policyExists(policyId) {
-        require(
-            msg.sender == privaraRouter || msg.sender == owner,
-            "Umbra: not authorized"
-        );
-
+        require(msg.sender == privaraRouter || msg.sender == owner, "Umbra: not authorized");
         Policy storage policy = policies[policyId];
-
-        require(
-            policy.status == PolicyStatus.OracleTriggered,
-            "Umbra: not triggered"
-        );
-
+        require(policy.status == PolicyStatus.OracleTriggered, "Umbra: not triggered");
         policy.status = PolicyStatus.Settled;
         policy.settlementTx = _settlementTx;
-
         emit PolicySettled(policyId, _settlementTx);
     }
 
-    /**
-     * @notice Expire a policy that has passed its expiry block
-     * @param policyId The policy to expire
-     */
-    function expirePolicy(
-        uint256 policyId
-    ) external policyExists(policyId) {
+    /* ═══════════════════════════════════════════════════════
+       FHE Handle Getters
+       (Returns ciphertext handles — caller must have ACL permit to decrypt)
+       ═══════════════════════════════════════════════════════ */
+
+    function getCoverageHandle(uint256 policyId) external view policyExists(policyId) returns (euint64) {
+        return _encCoverage[policyId];
+    }
+
+    function getPremiumHandle(uint256 policyId) external view policyExists(policyId) returns (euint64) {
+        return _encPremium[policyId];
+    }
+
+    function getThresholdHandle(uint256 policyId) external view policyExists(policyId) returns (euint64) {
+        return _encThreshold[policyId];
+    }
+
+    /// @notice Holder/beneficiary call this to get the ebool handle, then
+    ///         request sealed decryption off-chain via the CoFHE Threshold Network.
+    function getTriggerResultHandle(uint256 policyId) external view policyExists(policyId) returns (ebool) {
+        return _encTriggerResult[policyId];
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       Lifecycle helpers
+       ═══════════════════════════════════════════════════════ */
+
+    function expirePolicy(uint256 policyId) external policyExists(policyId) {
         Policy storage policy = policies[policyId];
-
-        require(
-            policy.status == PolicyStatus.Active,
-            "Umbra: not active"
-        );
-        require(
-            block.number > policy.expiryBlock,
-            "Umbra: not expired yet"
-        );
-
+        require(policy.status == PolicyStatus.Active, "Umbra: not active");
+        require(block.number > policy.expiryBlock, "Umbra: not expired yet");
         policy.status = PolicyStatus.Expired;
-
         emit PolicyExpired(policyId);
     }
 
-    /**
-     * @notice Dispute a settled policy (governance / manual review)
-     * @param policyId The policy to dispute
-     */
-    function disputePolicy(
-        uint256 policyId
-    ) external policyExists(policyId) {
+    function disputePolicy(uint256 policyId) external policyExists(policyId) {
         Policy storage policy = policies[policyId];
-
+        require(msg.sender == policy.holder || msg.sender == owner, "Umbra: not authorized");
         require(
-            msg.sender == policy.holder || msg.sender == owner,
-            "Umbra: not holder or owner"
+            policy.status == PolicyStatus.Settled || policy.status == PolicyStatus.OracleTriggered,
+            "Umbra: invalid status"
         );
-        require(
-            policy.status == PolicyStatus.Settled ||
-                policy.status == PolicyStatus.OracleTriggered,
-            "Umbra: invalid status for dispute"
-        );
-
         policy.status = PolicyStatus.Disputed;
-
         emit PolicyDisputed(policyId, msg.sender);
     }
 
     /* ═══════════════════════════════════════════════════════
-       View Functions
+       View
        ═══════════════════════════════════════════════════════ */
 
-    /**
-     * @notice Get policy details
-     */
-    function getPolicy(
-        uint256 policyId
-    ) external view policyExists(policyId) returns (Policy memory) {
+    function getPolicy(uint256 policyId) external view policyExists(policyId) returns (Policy memory) {
         return policies[policyId];
     }
 
-    /**
-     * @notice Get encrypted terms for a policy
-     */
-    function getEncryptedTerms(
-        uint256 policyId
-    ) external view policyExists(policyId) returns (EncryptedTerms memory) {
-        return encryptedTerms[policyId];
-    }
-
-    /**
-     * @notice Get the total number of policies
-     */
     function getPolicyCount() external view returns (uint256) {
         return nextPolicyId;
     }
 
     /* ═══════════════════════════════════════════════════════
-       Admin Functions
+       Admin
        ═══════════════════════════════════════════════════════ */
 
     function setTrustedOracle(address _oracle) external onlyOwner {

@@ -1,17 +1,20 @@
 /* ═══════════════════════════════════════════════════════════
    Umbra Protocol — Wagmi + RainbowKit Configuration
+   Target: Ethereum Sepolia (CoFHE coprocessor live)
    ═══════════════════════════════════════════════════════════ */
 
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { http } from "wagmi";
-import { FHENIX_HELIUM_CHAIN } from "@/lib/constants";
+import { sepolia } from "@/lib/constants";
 
 export const wagmiConfig = getDefaultConfig({
   appName: "Umbra Protocol",
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER_PROJECT_ID",
-  chains: [FHENIX_HELIUM_CHAIN],
+  chains: [sepolia],
   transports: {
-    [FHENIX_HELIUM_CHAIN.id]: http(FHENIX_HELIUM_CHAIN.rpcUrls.default.http[0]),
+    [sepolia.id]: http(
+      process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com"
+    ),
   },
   ssr: true,
 });

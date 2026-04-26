@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.25;
+
+import {InEuint64} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
 /**
  * @title IUmbra
@@ -35,12 +37,6 @@ interface IUmbra {
         bytes32 policyHash;
         uint256 resolvedBlock;
         bytes32 settlementTx;
-    }
-
-    struct EncryptedTerms {
-        bytes encryptedCoverage;   // FHE-encrypted euint64
-        bytes encryptedPremium;    // FHE-encrypted euint64
-        bytes encryptedThreshold;  // FHE-encrypted euint64
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -87,9 +83,9 @@ interface IUmbra {
         uint8 _riskCategory,
         address _oracleFeed,
         uint256 _expiryBlock,
-        bytes calldata _encryptedCoverage,
-        bytes calldata _encryptedPremium,
-        bytes calldata _encryptedThreshold,
+        InEuint64 calldata _inCoverage,
+        InEuint64 calldata _inPremium,
+        InEuint64 calldata _inThreshold,
         bytes32 _policyHash
     ) external returns (uint256 policyId);
 
@@ -113,8 +109,5 @@ interface IUmbra {
        ═══════════════════════════════════════════════════════ */
 
     function getPolicy(uint256 policyId) external view returns (Policy memory);
-
-    function getEncryptedTerms(uint256 policyId) external view returns (EncryptedTerms memory);
-
     function getPolicyCount() external view returns (uint256);
 }
