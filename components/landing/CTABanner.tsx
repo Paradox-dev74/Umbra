@@ -69,7 +69,7 @@ export function CTABanner() {
             </Button>
           </Link>
           <Badge variant="success" dot pulse>
-            Live on Fhenix Helium Testnet
+            Live on Ethereum Sepolia
           </Badge>
         </motion.div>
       </div>

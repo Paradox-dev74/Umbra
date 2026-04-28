@@ -89,7 +89,7 @@ export default function DashboardLayout({
                     <div className="flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-umbra-success" />
                       <span className="text-[10px] text-umbra-muted">
-                        Fhenix Helium
+                        Ethereum Sepolia
                       </span>
                     </div>
                   </div>
