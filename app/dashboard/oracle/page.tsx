@@ -21,9 +21,9 @@ export default function OraclePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {Object.values(ORACLE_FEEDS).map((feed, i) => (
+        {Object.entries(ORACLE_FEEDS).map(([key, feed], i) => (
           <motion.div
-            key={feed.id}
+            key={key}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.07, duration: 0.4 }}
@@ -76,9 +76,9 @@ export default function OraclePage() {
               </div>
 
               <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-                <span className="text-xs text-umbra-muted">Last Updated</span>
+                <span className="text-xs text-umbra-muted">Feed Address</span>
                 <span className="text-xs text-white font-mono">
-                  {new Date(feed.lastUpdated * 1000).toLocaleTimeString()}
+                  {feed.address.slice(0, 10)}…
                 </span>
               </div>
             </Card>
