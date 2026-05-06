@@ -3,10 +3,14 @@
    ═══════════════════════════════════════════════════════════ */
 
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
+import nextDynamic from "next/dynamic";
 import "./globals.css";
 
-const Providers = dynamic(() => import("@/components/Providers").then((m) => m.Providers), {
+// Disable static generation for all pages — @cofhe/sdk, wagmi, and WalletConnect
+// access window/indexedDB at module load time and crash during SSR/prerender.
+export const dynamic = "force-dynamic";
+
+const Providers = nextDynamic(() => import("@/components/Providers").then((m) => m.Providers), {
   ssr: false,
 });
 
