@@ -8,18 +8,13 @@ import { motion } from "framer-motion";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { useAccount } from "wagmi";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { UMBRA_CONTRACT_ADDRESS, UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
+import { UMBRA_CONTRACT_ADDRESS } from "@/lib/constants";
 import { formatAddress } from "@/lib/utils";
 import { Settings, Shield, ExternalLink, Copy } from "lucide-react";
-import { ContractAdminPanel } from "@/components/dashboard/ContractAdminPanel";
-import { useFhenix } from "@/hooks/useFhenix";
-import { useMaxPremiumRatioDivisor } from "@/hooks/usePrivacyFeatures";
 import { useState } from "react";
 
 export default function SettingsPage() {
   const { address, isConnected, chain } = useAccount();
-  const { clientReady } = useFhenix();
-  const { data: ratioDivisor } = useMaxPremiumRatioDivisor();
   const [copied, setCopied] = useState(false);
 
   const copyAddress = (value: string) => {
@@ -39,6 +34,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-4">
+        {/* Wallet */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <Card>
             <CardHeader>
@@ -117,31 +113,12 @@ export default function SettingsPage() {
                 <span className="text-sm text-white">Ethereum Sepolia</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-umbra-muted">CoFHE Client</span>
-                <span className={`text-sm ${clientReady ? "text-umbra-success" : "text-umbra-warning"}`}>
-                  {clientReady ? "Connected" : "Connecting…"}
-                </span>
+                <span className="text-xs text-umbra-muted">FHE Scheme</span>
+                <span className="text-sm text-white">CoFHE (Fully Homomorphic)</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-umbra-muted">Max Premium Ratio</span>
-                <span className="text-sm text-white">
-                  {ratioDivisor ? `${(100 / Number(ratioDivisor)).toFixed(1)}% (÷${ratioDivisor})` : "—"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-umbra-muted">Trusted Oracle</span>
-                <span className="text-sm text-white font-mono">
-                  {formatAddress(UMBRA_TRUSTED_ORACLE, 6)}
-                </span>
-              </div>
-              <p className="text-[10px] text-umbra-muted">
-                Connect this wallet to resolve policies via Chainlink on-chain.
-              </p>
             </CardBody>
           </Card>
         </motion.div>
-
-        <ContractAdminPanel />
       </div>
     </div>
   );

@@ -19,11 +19,11 @@ import {
 } from "lucide-react";
 
 const navItems = [
-  { icon: LayoutGrid, label: "Dashboard", href: "/dashboard" },
-  { icon: Shield, label: "My Policies", href: "/dashboard" },
-  { icon: Plus, label: "Create Policy", href: "/dashboard/create" },
-  { icon: Zap, label: "Oracle Feeds", href: "/dashboard" },
-  { icon: Settings, label: "Settings", href: "/dashboard" },
+  { icon: LayoutGrid, label: "Dashboard",    href: "/dashboard",         exact: true },
+  { icon: Shield,     label: "My Policies",  href: "/dashboard/policies",exact: false },
+  { icon: Plus,       label: "Create Policy",href: "/dashboard/create",  exact: false },
+  { icon: Zap,        label: "Oracle Feeds", href: "/dashboard/oracle",  exact: false },
+  { icon: Settings,   label: "Settings",     href: "/dashboard/settings",exact: false },
 ];
 
 export default function DashboardLayout({
@@ -40,10 +40,13 @@ export default function DashboardLayout({
       <aside className="hidden lg:flex flex-col w-[260px] border-r border-white/[0.06] bg-umbra-card/50">
         {/* Logo */}
         <div className="px-6 h-16 flex items-center border-b border-white/[0.06]">
-          <Link href="/" className="flex items-center gap-2 text-white">
-            <div className="w-7 h-7 rounded-full bg-umbra-blue flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-white" />
-            </div>
+          <Link href="/" className="flex items-center gap-2.5 text-white group">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="14" cy="14" r="14" fill="#3B82F6" fillOpacity="0.15"/>
+              <circle cx="14" cy="14" r="10" fill="#3B82F6" fillOpacity="0.25"/>
+              <path d="M14 6C14 6 8 10 8 15.5C8 18.5376 10.6863 21 14 21C17.3137 21 20 18.5376 20 15.5C20 10 14 6 14 6Z" fill="#3B82F6"/>
+              <circle cx="14" cy="15" r="3" fill="white" fillOpacity="0.9"/>
+            </svg>
             <span className="text-lg font-bold tracking-tight">Umbra</span>
           </Link>
         </div>
@@ -51,7 +54,9 @@ export default function DashboardLayout({
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = item.exact
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
             return (
               <Link
                 key={item.label}

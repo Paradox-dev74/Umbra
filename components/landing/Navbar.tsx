@@ -45,10 +45,13 @@ export function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo — Far Left */}
-        <Link href="/" className="flex items-center gap-2 text-white">
-          <div className="w-7 h-7 rounded-full bg-umbra-blue flex items-center justify-center">
-            <div className="w-3 h-3 rounded-full bg-white" />
-          </div>
+        <Link href="/" className="flex items-center gap-2.5 text-white">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="14" cy="14" r="14" fill="#3B82F6" fillOpacity="0.15"/>
+            <circle cx="14" cy="14" r="10" fill="#3B82F6" fillOpacity="0.25"/>
+            <path d="M14 6C14 6 8 10 8 15.5C8 18.5376 10.6863 21 14 21C17.3137 21 20 18.5376 20 15.5C20 10 14 6 14 6Z" fill="#3B82F6"/>
+            <circle cx="14" cy="15" r="3" fill="white" fillOpacity="0.9"/>
+          </svg>
           <span className="text-lg font-bold tracking-tight">Umbra</span>
         </Link>
 

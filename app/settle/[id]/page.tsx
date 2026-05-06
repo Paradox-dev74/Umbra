@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Settlement Execution Page (Mock Mode)
+   Umbra Protocol — Settlement Execution Page (On-Chain)
    ═══════════════════════════════════════════════════════════ */
 
 "use client";
@@ -9,18 +9,12 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
-import {
-  DEMO_POLICIES,
-  RISK_CATEGORIES,
-  ORACLE_FEEDS,
-} from "@/lib/constants";
-import {
-  formatAddress,
-  formatUSDC,
-  sleep,
-} from "@/lib/utils";
+import { RISK_CATEGORIES, ORACLE_FEEDS } from "@/lib/constants";
+import { formatAddress } from "@/lib/utils";
+import { usePolicy } from "@/hooks/useUmbraContract";
+import { useResolveWithOracle, useMarkSettled } from "@/hooks/useUmbraContract";
+import { usePrivara } from "@/hooks/usePrivara";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,6 +25,7 @@ import {
   Lock,
   Unlock,
   Send,
+  RefreshCw,
 } from "lucide-react";
 
 type SettleStage =
@@ -39,28 +34,29 @@ type SettleStage =
   | "fhe-compare"
   | "decrypt-result"
   | "execute-payout"
-  | "complete";
+  | "complete"
+  | "error";
 
 const STAGES: { key: SettleStage; label: string; description: string }[] = [
   {
     key: "verify-oracle",
     label: "Verify Oracle",
-    description: "Fetching and verifying the latest oracle proof on-chain...",
+    description: "Calling resolveWithOracle() on-chain — FHE comparison triggers automatically…",
   },
   {
     key: "fhe-compare",
     label: "FHE Comparison",
-    description: "Running encrypted comparison: FHE.gte(oracleValue, eThreshold)...",
+    description: "Running encrypted comparison: FHE.gte(oracleValue, eThreshold) on-chain…",
   },
   {
     key: "decrypt-result",
     label: "Decrypt Result",
-    description: "Sealed decryption of ebool comparison result via Privara relay...",
+    description: "Sealed decryption of ebool comparison result via CoFHE Threshold Network…",
   },
   {
     key: "execute-payout",
     label: "Execute Payout",
-    description: "Condition met — transferring encrypted coverage to beneficiary...",
+    description: "Executing insurance payout via Privara settlement layer…",
   },
   {
     key: "complete",
@@ -76,16 +72,28 @@ export default function SettlementPage() {
 
   const [stage, setStage] = useState<SettleStage>("idle");
   const [isRunning, setIsRunning] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [settleTxHash, setSettleTxHash] = useState<string | null>(null);
 
-  const policy = DEMO_POLICIES.find((p) => Number(p.id) === policyId);
+  const { data: policy, isLoading } = usePolicy(policyId);
+  const { resolveWithOracle } = useResolveWithOracle();
+  const { markSettled } = useMarkSettled();
+  const { settlePolicy } = usePrivara();
 
-  if (!policy) {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <RefreshCw className="w-8 h-8 animate-spin text-umbra-blue" />
+        <p className="text-umbra-muted">Loading policy from chain…</p>
+      </div>
+    );
+  }
+
+  if (!policy || policy.id === 0n) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <h1 className="text-2xl font-bold text-white">Policy Not Found</h1>
-        <p className="text-umbra-muted">
-          Policy #{policyId} does not exist.
-        </p>
+        <p className="text-umbra-muted">Policy #{policyId} does not exist.</p>
         <Button variant="ghost" onClick={() => router.push("/dashboard")}>
           <ArrowLeft className="w-4 h-4" />
           Back to Dashboard
@@ -94,34 +102,58 @@ export default function SettlementPage() {
     );
   }
 
-  const category = RISK_CATEGORIES[policy.riskCategory];
+  const category = RISK_CATEGORIES[policy.riskCategory as keyof typeof RISK_CATEGORIES];
   const oracleFeed = Object.values(ORACLE_FEEDS).find(
-    (f) => f.address.toLowerCase() === policy.oracleFeed.toLowerCase()
+    (f) => f.address.toLowerCase() === (policy.oracleFeed as string).toLowerCase()
   );
 
   const currentStageIdx = STAGES.findIndex((s) => s.key === stage);
 
   const runSettlement = useCallback(async () => {
     setIsRunning(true);
+    setErrorMsg(null);
 
-    setStage("verify-oracle");
-    await sleep(1500);
+    try {
+      // Stage 1: Call resolveWithOracle on-chain
+      setStage("verify-oracle");
+      const oracleValue = BigInt(Math.round((oracleFeed?.currentValue ?? 0) * 100));
+      await resolveWithOracle(policyId, oracleValue);
 
-    setStage("fhe-compare");
-    await sleep(2500);
+      // Stage 2 + 3: FHE compare + decrypt (handled by the contract, just UI progression)
+      setStage("fhe-compare");
+      await new Promise((r) => setTimeout(r, 1500));
 
-    setStage("decrypt-result");
-    await sleep(2000);
+      setStage("decrypt-result");
+      await new Promise((r) => setTimeout(r, 1500));
 
-    setStage("execute-payout");
-    await sleep(1500);
+      // Stage 4: Execute payout via Privara
+      setStage("execute-payout");
+      const result = await settlePolicy({
+        policyId: String(policyId),
+        enterpriseAddress: policy.holder as string,
+        beneficiaryAddress: policy.beneficiary as string,
+        encryptedCoverageAmount: "sealed",
+        policyReferenceHash: policy.policyHash as string,
+        riskCategory: String(policy.riskCategory),
+      });
 
-    setStage("complete");
-    setIsRunning(false);
-  }, []);
+      // Mark settled on-chain
+      const settleTx = result.transactionHash as `0x${string}`;
+      setSettleTxHash(settleTx);
+      await markSettled(policyId, settleTx);
+
+      setStage("complete");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Settlement failed";
+      setErrorMsg(msg);
+      setStage("error");
+    } finally {
+      setIsRunning(false);
+    }
+  }, [policyId, oracleFeed, policy, resolveWithOracle, settlePolicy, markSettled]);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -137,7 +169,7 @@ export default function SettlementPage() {
             <h1 className="text-2xl font-bold text-white">
               Settle Policy #{policyId}
             </h1>
-            <StatusBadge status={policy.status} />
+            <StatusBadge status={policy.status as number} />
           </div>
           <p className="text-umbra-muted text-sm mt-1">
             {category?.label} · {oracleFeed?.name ?? "Unknown Feed"}
@@ -147,46 +179,30 @@ export default function SettlementPage() {
 
       {/* Settlement Flow Diagram */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Box 1: Oracle */}
         <FlowBox
           icon={<Radio className="w-5 h-5 text-amber-400" />}
           title="Oracle Proof"
           subtitle={oracleFeed?.name ?? "Feed"}
           value={`${oracleFeed?.currentValue.toLocaleString() ?? "?"} ${oracleFeed?.unit ?? ""}`}
           active={stage === "verify-oracle"}
-          done={currentStageIdx > 0}
+          done={currentStageIdx > 0 && stage !== "error"}
         />
-
-        {/* Box 2: FHE Engine */}
         <FlowBox
           icon={<Lock className="w-5 h-5 text-umbra-violet" />}
           title="FHE Engine"
           subtitle={category?.fheOperator ?? "FHE.gte"}
           value="Encrypted comparison"
           active={stage === "fhe-compare" || stage === "decrypt-result"}
-          done={currentStageIdx > 2}
+          done={currentStageIdx > 2 && stage !== "error"}
         />
-
-        {/* Box 3: Payout */}
         <FlowBox
           icon={<Send className="w-5 h-5 text-umbra-success" />}
           title="Settlement"
           subtitle="Beneficiary"
-          value={formatAddress(policy.beneficiary, 6)}
+          value={formatAddress(policy.beneficiary as `0x${string}`, 6)}
           active={stage === "execute-payout"}
           done={stage === "complete"}
         />
-      </div>
-
-      {/* Arrows between boxes */}
-      <div className="hidden md:flex items-center justify-center -mt-4 mb-2">
-        <div className="flex items-center gap-4 text-white/20">
-          <div className="w-24" />
-          <ArrowRight className="w-5 h-5" />
-          <div className="w-40" />
-          <ArrowRight className="w-5 h-5" />
-          <div className="w-24" />
-        </div>
       </div>
 
       {/* Stage Progress */}
@@ -194,14 +210,12 @@ export default function SettlementPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-umbra-blue" />
-            <h2 className="text-lg font-semibold text-white">
-              Settlement Pipeline
-            </h2>
+            <h2 className="text-lg font-semibold text-white">Settlement Pipeline</h2>
           </div>
         </CardHeader>
         <CardBody className="space-y-4">
           {STAGES.map((s, idx) => {
-            const isDone = idx < currentStageIdx;
+            const isDone = idx < currentStageIdx && stage !== "error";
             const isActive = s.key === stage;
             const isPending = idx > currentStageIdx || stage === "idle";
 
@@ -213,7 +227,6 @@ export default function SettlementPage() {
                 transition={{ delay: idx * 0.05, duration: 0.3 }}
                 className="flex items-start gap-4"
               >
-                {/* Status icon */}
                 <div className="mt-0.5">
                   {isDone ? (
                     <div className="w-6 h-6 rounded-full bg-umbra-success/20 flex items-center justify-center">
@@ -225,25 +238,11 @@ export default function SettlementPage() {
                     <div className="w-6 h-6 rounded-full border border-white/10" />
                   )}
                 </div>
-
-                {/* Text */}
                 <div>
-                  <p
-                    className={`text-sm font-medium ${
-                      isDone
-                        ? "text-umbra-success"
-                        : isActive
-                          ? "text-white"
-                          : "text-white/40"
-                    }`}
-                  >
+                  <p className={`text-sm font-medium ${isDone ? "text-umbra-success" : isActive ? "text-white" : "text-white/40"}`}>
                     {s.label}
                   </p>
-                  <p
-                    className={`text-xs mt-0.5 ${
-                      isActive ? "text-umbra-muted" : "text-white/20"
-                    }`}
-                  >
+                  <p className={`text-xs mt-0.5 ${isActive ? "text-umbra-muted" : "text-white/20"}`}>
                     {s.description}
                   </p>
                 </div>
@@ -251,53 +250,55 @@ export default function SettlementPage() {
             );
           })}
 
-          {/* Action buttons */}
+          {/* Action area */}
           <div className="pt-4 border-t border-white/[0.06]">
             {stage === "idle" && (
-              <Button
-                variant="primary"
-                className="w-full"
-                glow
-                onClick={runSettlement}
-              >
+              <Button variant="primary" className="w-full" glow onClick={runSettlement}>
                 <Zap className="w-4 h-4" />
                 Begin Settlement
               </Button>
             )}
 
+            {stage === "error" && (
+              <div className="space-y-3">
+                <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                  {errorMsg}
+                </div>
+                <Button variant="ghost" className="w-full" onClick={() => { setStage("idle"); setErrorMsg(null); }}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
             {isRunning && (
-              <div className="text-center text-sm text-umbra-muted animate-pulse">
+              <div className="text-center text-sm text-umbra-muted animate-pulse mt-2">
                 Settlement in progress — do not navigate away
               </div>
             )}
 
             {stage === "complete" && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-3"
-              >
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                 <div className="flex items-center justify-center gap-2 py-3 rounded-lg bg-umbra-success/10 border border-umbra-success/20">
                   <Unlock className="w-4 h-4 text-umbra-success" />
                   <span className="text-sm text-umbra-success font-medium">
                     Settlement executed successfully
                   </span>
                 </div>
-                <div className="flex gap-3">
-                  <Button
-                    variant="ghost"
-                    className="flex-1"
-                    onClick={() =>
-                      router.push(`/dashboard/policy/${policyId}`)
-                    }
+                {settleTxHash && (
+                  <a
+                    href={`https://sepolia.etherscan.io/tx/${settleTxHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-center text-xs text-umbra-blue hover:underline font-mono"
                   >
+                    {settleTxHash.slice(0, 20)}… ↗
+                  </a>
+                )}
+                <div className="flex gap-3">
+                  <Button variant="ghost" className="flex-1" onClick={() => router.push(`/dashboard/policy/${policyId}`)}>
                     View Policy
                   </Button>
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => router.push("/dashboard")}
-                  >
+                  <Button variant="outline" className="flex-1" onClick={() => router.push("/dashboard")}>
                     Dashboard
                   </Button>
                 </div>
@@ -310,31 +311,18 @@ export default function SettlementPage() {
       {/* Policy Summary */}
       <Card>
         <CardBody>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-xs text-umbra-muted">Coverage</p>
-              <p className="text-sm text-white font-mono mt-1">
-                {formatUSDC(policy.coverageAmount)}
-              </p>
+              <p className="text-xs text-umbra-muted">Oracle Feed</p>
+              <p className="text-sm text-white font-mono mt-1">{oracleFeed?.name ?? "—"}</p>
             </div>
             <div>
-              <p className="text-xs text-umbra-muted">Premium</p>
-              <p className="text-sm text-white font-mono mt-1">
-                {formatUSDC(policy.premium)}
-              </p>
+              <p className="text-xs text-umbra-muted">Policy Holder</p>
+              <p className="text-sm text-white font-mono mt-1">{formatAddress(policy.holder as `0x${string}`, 4)}</p>
             </div>
             <div>
-              <p className="text-xs text-umbra-muted">Threshold</p>
-              <p className="text-sm text-white font-mono mt-1">
-                {policy.triggerThreshold.toLocaleString()}{" "}
-                <span className="text-umbra-muted text-xs">{oracleFeed?.unit ?? ""}</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-umbra-muted">Enterprise</p>
-              <p className="text-sm text-white font-mono mt-1">
-                {formatAddress(policy.enterprise, 4)}
-              </p>
+              <p className="text-xs text-umbra-muted">Beneficiary</p>
+              <p className="text-sm text-white font-mono mt-1">{formatAddress(policy.beneficiary as `0x${string}`, 4)}</p>
             </div>
           </div>
         </CardBody>

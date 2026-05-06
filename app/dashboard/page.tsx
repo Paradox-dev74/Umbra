@@ -4,52 +4,28 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAccount } from "wagmi";
-import { Card, CardBody } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { PolicyTable } from "@/components/dashboard/PolicyTable";
-import { DEMO_POLICIES, ORACLE_FEEDS } from "@/lib/constants";
+import { ORACLE_FEEDS } from "@/lib/constants";
+import { useUserPolicies } from "@/hooks/useUmbraContract";
 import { formatAddress } from "@/lib/utils";
-import { Plus, Lock, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
-
-const statCards = [
-  {
-    label: "Active Policies",
-    value: "3",
-    dotColor: "bg-umbra-success",
-    change: null,
-  },
-  {
-    label: "Total Coverage",
-    value: "████████ USDC",
-    dotColor: null,
-    encrypted: true,
-  },
-  {
-    label: "Pending Settlement",
-    value: "1",
-    dotColor: "bg-umbra-warning",
-    change: null,
-  },
-  {
-    label: "Total Premiums Paid",
-    value: "████████ USDC",
-    dotColor: null,
-    encrypted: true,
-  },
-];
+import { Plus, Lock, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { PolicyStatus } from "@/lib/types";
 
 export default function DashboardPage() {
-  const [policies] = useState(DEMO_POLICIES);
   const { address, isConnected } = useAccount();
+  const { policies, isLoading, refetch } = useUserPolicies();
 
-  const displayAddress = isConnected && address
-    ? formatAddress(address)
-    : "Demo Mode";
+  const displayAddress = isConnected && address ? formatAddress(address) : "—";
+
+  // Derive stats from on-chain policies
+  const activeCount = policies.filter((p) => p.status === PolicyStatus.Active).length;
+  const triggeredCount = policies.filter((p) => p.status === PolicyStatus.Triggered).length;
 
   return (
     <div className="p-6 md:p-8 max-w-7xl">
@@ -63,17 +39,51 @@ export default function DashboardPage() {
             Welcome back, {displayAddress}
           </p>
         </div>
-        <Link href="/dashboard/create">
-          <Button variant="primary" pill>
-            <Plus className="w-4 h-4" />
-            Create New Policy
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => refetch()}
+            className="p-2 rounded-lg text-umbra-muted hover:text-white border border-white/10 hover:bg-white/5 transition-all"
+            title="Refresh"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </button>
+          <Link href="/dashboard/create">
+            <Button variant="primary" pill>
+              <Plus className="w-4 h-4" />
+              Create New Policy
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map((stat, i) => (
+        {[
+          {
+            label: "Active Policies",
+            value: isLoading ? "—" : String(activeCount),
+            dotColor: "bg-umbra-success",
+            encrypted: false,
+          },
+          {
+            label: "Total Coverage",
+            value: "Encrypted",
+            dotColor: null,
+            encrypted: true,
+          },
+          {
+            label: "Pending Settlement",
+            value: isLoading ? "—" : String(triggeredCount),
+            dotColor: "bg-umbra-warning",
+            encrypted: false,
+          },
+          {
+            label: "Total Policies",
+            value: isLoading ? "—" : String(policies.length),
+            dotColor: "bg-umbra-blue",
+            encrypted: false,
+          },
+        ].map((stat, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 20 }}
@@ -88,8 +98,8 @@ export default function DashboardPage() {
                 )}
                 {stat.encrypted ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold font-mono text-white/70 tracking-widest">
-                      {stat.value.split(" ")[0]}
+                    <span className="text-xl font-bold font-mono text-white/40 tracking-widest">
+                      ████████
                     </span>
                     <span className="text-sm text-umbra-muted">USDC</span>
                     <Lock className="w-3.5 h-3.5 text-umbra-violet" />
@@ -120,7 +130,6 @@ export default function DashboardPage() {
           </div>
           <div className="overflow-hidden">
             <div className="flex animate-ticker whitespace-nowrap py-3 px-4">
-              {/* Duplicate for seamless loop */}
               {[...Object.values(ORACLE_FEEDS), ...Object.values(ORACLE_FEEDS)].map(
                 (feed, i) => (
                   <div
@@ -158,9 +167,18 @@ export default function DashboardPage() {
         <Card>
           <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">Your Policies</h2>
-            <Badge variant="info">{policies.length} total</Badge>
+            <Badge variant="info">
+              {isLoading ? "Loading…" : `${policies.length} total`}
+            </Badge>
           </div>
-          <PolicyTable policies={policies} />
+          {isLoading ? (
+            <div className="text-center py-16 text-umbra-muted">
+              <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-3" />
+              Loading policies from chain…
+            </div>
+          ) : (
+            <PolicyTable policies={policies} />
+          )}
         </Card>
       </motion.div>
     </div>
