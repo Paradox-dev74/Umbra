@@ -8,19 +8,22 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { StatusBadge } from "./StatusBadge";
 import { RISK_CATEGORIES, ORACLE_FEEDS } from "@/lib/constants";
-import { formatAddress, formatRelativeTime } from "@/lib/utils";
+import { formatAddress } from "@/lib/utils";
 import { ArrowRight, Lock } from "lucide-react";
 
 interface PolicyTableProps {
   policies: Array<{
     id: bigint;
-    enterprise: `0x${string}`;
+    holder: `0x${string}`;
     beneficiary: `0x${string}`;
     riskCategory: number;
     status: number;
     oracleFeed: `0x${string}`;
-    createdAt: bigint;
-    policyReferenceHash: `0x${string}`;
+    createdBlock: bigint;
+    expiryBlock: bigint;
+    policyHash: `0x${string}`;
+    resolvedBlock: bigint;
+    settlementTx: `0x${string}`;
   }>;
 }
 
@@ -77,7 +80,7 @@ export function PolicyTable({ policies }: PolicyTableProps) {
               Oracle Feed
             </th>
             <th className="text-left text-xs text-umbra-muted font-medium py-3 px-4">
-              Created
+              Created Block
             </th>
             <th className="text-right text-xs text-umbra-muted font-medium py-3 px-4">
               Actions
@@ -136,8 +139,8 @@ export function PolicyTable({ policies }: PolicyTableProps) {
                   </span>
                 </td>
                 <td className="py-4 px-4">
-                  <span className="text-sm text-umbra-muted">
-                    {formatRelativeTime(policy.createdAt)}
+                  <span className="text-sm text-umbra-muted font-mono">
+                    #{Number(policy.createdBlock)}
                   </span>
                 </td>
                 <td className="py-4 px-4 text-right">
