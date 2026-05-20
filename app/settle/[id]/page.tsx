@@ -102,7 +102,7 @@ export default function SettlementPage() {
     );
   }
 
-  const category = RISK_CATEGORIES[policy.riskCategory as keyof typeof RISK_CATEGORIES];
+  const category = (RISK_CATEGORIES as (typeof RISK_CATEGORIES)[number][])[policy.riskCategory as number];
   const oracleFeed = Object.values(ORACLE_FEEDS).find(
     (f) => f.address.toLowerCase() === (policy.oracleFeed as string).toLowerCase()
   );
