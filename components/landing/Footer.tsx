@@ -13,16 +13,16 @@ const columns = [
       { label: "Dashboard", href: "/dashboard" },
       { label: "Create Policy", href: "/dashboard/create" },
       { label: "Documentation", href: "#" },
-      { label: "Smart Contracts", href: "#" },
+      { label: "Smart Contracts", href: "https://sepolia.etherscan.io/address/0x39e14d328EbDe66E2137925EC1A0C77bf40e584e", external: true },
     ],
   },
   {
     title: "Resources",
     links: [
-      { label: "Fhenix Docs", href: "https://docs.fhenix.io" },
-      { label: "Privara Docs", href: "https://reineira.xyz/docs" },
-      { label: "Chainlink Feeds", href: "#" },
-      { label: "GitHub", href: "#" },
+      { label: "CoFHE Docs", href: "https://docs.cofhe.io", external: true },
+      { label: "Chainlink Feeds", href: "https://docs.chain.link/data-feeds/price-feeds/addresses?network=ethereum&page=1&search=sepolia", external: true },
+      { label: "Etherscan", href: "https://sepolia.etherscan.io/address/0x39e14d328EbDe66E2137925EC1A0C77bf40e584e", external: true },
+      { label: "GitHub", href: "https://github.com/aamer1932002-dev/umbra-protocol", external: true },
     ],
   },
   {
@@ -105,12 +105,23 @@ export function Footer() {
               <ul className="space-y-2">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-umbra-muted hover:text-white transition-colors"
-                    >
-                      {link.label}
-                    </Link>
+                    {"external" in link && link.external ? (
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-umbra-muted hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        href={link.href}
+                        className="text-sm text-umbra-muted hover:text-white transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -118,14 +129,28 @@ export function Footer() {
           ))}
         </div>
 
+        {/* Testnet disclaimer */}
+        <div className="mt-8 px-4 py-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+          <p className="text-[11px] text-amber-400/80 text-center leading-relaxed">
+            <span className="font-semibold text-amber-400">Testnet Notice:</span>{" "}
+            Umbra Protocol is currently deployed on Ethereum Sepolia testnet. All policies and
+            transactions use test ETH only. Do not send real funds to any contract address.
+          </p>
+        </div>
+
         {/* Bottom bar */}
-        <div className="mt-12 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="mt-8 pt-6 border-t border-white/[0.06] flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-umbra-muted">
-            © 2025 Umbra Protocol. Powered by Fhenix FHE + Privara.
+            © 2025 Umbra Protocol. Powered by CoFHE FHE + Chainlink.
           </p>
-          <p className="text-xs text-umbra-muted">
-            Built for confidential parametric insurance coverage.
-          </p>
+          <a
+            href="https://sepolia.etherscan.io/address/0x39e14d328EbDe66E2137925EC1A0C77bf40e584e"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-umbra-muted hover:text-umbra-blue transition-colors font-mono"
+          >
+            0x39e1...584e
+          </a>
         </div>
       </div>
     </footer>

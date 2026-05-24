@@ -7,7 +7,7 @@
 "use client";
 
 import { useReadContracts } from "wagmi";
-import { CHAINLINK_AGGREGATOR_ABI } from "@/lib/chainlink-abi";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/lib/abi";
 import { ORACLE_FEEDS } from "@/lib/constants";
 
 export interface ChainlinkPriceData {
@@ -23,8 +23,10 @@ export interface ChainlinkPriceData {
  * Refreshes every 30 seconds. Falls back to null for simulated feeds.
  */
 export function useChainlinkPrices(): Record<string, ChainlinkPriceData | null> {
-  // All configured feeds use Chainlink on Sepolia
-  const feeds = Object.entries(ORACLE_FEEDS);
+  // Only include feeds that have a real Chainlink address
+  const feeds = Object.entries(ORACLE_FEEDS).filter(
+    ([, f]) => f.chainlinkAddress && !f.simulated
+  );
 
   // Build a flat multicall: [latestRoundData, decimals] per feed
   const contracts = feeds.flatMap(([, feed]) => [

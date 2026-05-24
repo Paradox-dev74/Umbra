@@ -12,7 +12,7 @@ import { ParticleCanvas } from "./ParticleCanvas";
 import { HeroOrb } from "./HeroOrb";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Shield, Lock } from "lucide-react";
 
 const words = [
   { text: "Invisible", color: "text-white" },
@@ -47,6 +47,71 @@ export function HeroSection() {
       {/* LAYER 2: Energy Orb */}
       <HeroOrb />
 
+      {/* LAYER 2.5: Floating Encrypted Policy Card — visible md+ */}
+      <div className="hidden md:block absolute top-1/2 right-10 xl:right-24 -translate-y-1/2 z-10 w-72">
+        <motion.div
+          initial={{ opacity: 0, x: 50, y: 10 }}
+          animate={{ opacity: 1, x: 0, y: 0 }}
+          transition={{ delay: 1.3, duration: 0.8, type: "spring", stiffness: 80 }}
+          className="relative"
+        >
+          {/* Ambient glow behind card */}
+          <div className="absolute -inset-4 bg-umbra-blue/10 blur-2xl rounded-3xl pointer-events-none" />
+
+          {/* Card */}
+          <div className="relative bg-umbra-card/90 border border-white/[0.1] rounded-2xl p-5 backdrop-blur-sm shadow-card-dark">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-umbra-blue/15 flex items-center justify-center">
+                  <Shield className="w-3.5 h-3.5 text-umbra-blue" />
+                </div>
+                <span className="text-sm font-semibold text-white">Policy #42</span>
+              </div>
+              <span className="px-2 py-0.5 rounded-full bg-umbra-success/10 text-umbra-success text-[11px] font-medium">
+                Active
+              </span>
+            </div>
+
+            {/* Fields */}
+            <div className="space-y-3 mb-4">
+              {[
+                { label: "Coverage", encrypted: true },
+                { label: "Trigger Threshold", encrypted: true },
+                { label: "Oracle", value: "ETH / USD", encrypted: false },
+                { label: "Risk Category", value: "Commodity Price", encrypted: false },
+              ].map((field) => (
+                <div key={field.label} className="flex items-center justify-between">
+                  <span className="text-[11px] text-umbra-muted">{field.label}</span>
+                  {field.encrypted ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-mono text-white/25 tracking-widest select-none">
+                        ███████
+                      </span>
+                      <Lock className="w-2.5 h-2.5 text-umbra-violet" />
+                    </div>
+                  ) : (
+                    <span className="text-[11px] text-white font-mono">{field.value}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* FHE footer */}
+            <div className="pt-3 border-t border-white/[0.06] flex items-center gap-2">
+              <motion.span
+                animate={{ opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="w-1.5 h-1.5 rounded-full bg-umbra-violet flex-shrink-0"
+              />
+              <span className="text-[10px] text-umbra-violet font-mono tracking-wide">
+                FHE-ENCRYPTED · COFHE · SEPOLIA
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
       {/* LAYER 3: Hero Text — bottom-left positioned */}
       <div className="absolute bottom-20 md:bottom-20 left-6 md:left-20 z-10 max-w-xl">
         {/* Badge */}
@@ -56,7 +121,7 @@ export function HeroSection() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           <Badge variant="success" dot pulse className="mb-6">
-            Live on Fhenix Testnet
+            Live on Ethereum Sepolia · CoFHE
           </Badge>
         </motion.div>
 

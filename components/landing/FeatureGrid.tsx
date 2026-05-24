@@ -19,32 +19,50 @@ const features = [
   {
     icon: EyeOff,
     title: "Zero Threshold Exposure",
-    body: "Competitors never learn your strike price. FHE ensures your trigger threshold is encrypted at rest and during computation.",
+    body: "Your strike price never touches the blockchain in plaintext. FHE ensures your trigger threshold is encrypted at rest and during every oracle comparison.",
+    gradient: "from-umbra-blue/30 via-transparent to-transparent",
+    iconBg: "bg-umbra-blue/10",
+    iconColor: "text-umbra-blue",
   },
   {
     icon: GitBranch,
     title: "Branchless Settlement",
-    body: "FHE.select prevents side-channel leakage. No public branching means observers cannot infer outcomes from execution patterns.",
+    body: "FHE.select prevents side-channel leakage. No public branching means external observers cannot infer payout outcomes from execution patterns.",
+    gradient: "from-umbra-violet/30 via-transparent to-transparent",
+    iconBg: "bg-umbra-violet/10",
+    iconColor: "text-umbra-violet",
   },
   {
     icon: Radio,
-    title: "Live Oracle Integration",
-    body: "Chainlink feeds are evaluated homomorphically against your encrypted thresholds in real-time on every oracle update.",
+    title: "Real Chainlink Oracles",
+    body: "Live Chainlink price feeds on Sepolia are evaluated homomorphically against your encrypted thresholds — oracle values are public, your threshold is not.",
+    gradient: "from-amber-500/30 via-transparent to-transparent",
+    iconBg: "bg-amber-500/10",
+    iconColor: "text-amber-400",
   },
   {
     icon: ShieldCheck,
     title: "Confidential Payouts",
-    body: "Privara hides transfer amounts and treasury movements. Settlement details remain indistinguishable to external observers.",
+    body: "Privara hides transfer amounts and treasury movements. Settlement executes without revealing your financial exposure to counterparties or observers.",
+    gradient: "from-umbra-success/30 via-transparent to-transparent",
+    iconBg: "bg-umbra-success/10",
+    iconColor: "text-umbra-success",
   },
   {
     icon: KeyRound,
     title: "Sealed Decryption",
-    body: "Only you can read your policy parameters using Fhenix sealed output. Zero third-party decryption keys required.",
+    body: "Only you can read your policy parameters using CoFHE sealed output. The Threshold Network performs decryption — no single party holds a decryption key.",
+    gradient: "from-rose-500/30 via-transparent to-transparent",
+    iconBg: "bg-rose-500/10",
+    iconColor: "text-rose-400",
   },
   {
     icon: Layers,
-    title: "Multi-Risk Categories",
-    body: "Supply chain delays, weather indices, commodity prices, shipping costs, and FX volatility — all with FHE-protected thresholds.",
+    title: "5 Risk Categories",
+    body: "Supply chain delays, weather indices, commodity prices, shipping costs, and FX volatility — all with FHE-protected hidden thresholds on Ethereum Sepolia.",
+    gradient: "from-cyan-500/30 via-transparent to-transparent",
+    iconBg: "bg-cyan-500/10",
+    iconColor: "text-cyan-400",
   },
 ];
 
@@ -82,20 +100,24 @@ export function FeatureGrid() {
                 stiffness: 100,
               }}
             >
-              <Card
-                className="p-6 h-full transition-all duration-300 hover:border-umbra-blue/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.06)]"
-                hover
+              {/* Gradient border wrapper */}
+              <div
+                className={`group relative rounded-xl bg-gradient-to-br ${feature.gradient} p-[1px] transition-all duration-300 hover:opacity-100 h-full`}
               >
-                <div className="w-10 h-10 rounded-lg bg-umbra-blue/10 flex items-center justify-center mb-4">
-                  <feature.icon className="w-5 h-5 text-umbra-blue" />
-                </div>
-                <h3 className="text-lg font-semibold text-white mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-umbra-muted leading-relaxed">
-                  {feature.body}
-                </p>
-              </Card>
+                <Card
+                  className="relative h-full rounded-xl p-6 bg-umbra-card transition-all duration-300 group-hover:shadow-[0_0_24px_rgba(59,130,246,0.05)]"
+                >
+                  <div className={`w-10 h-10 rounded-lg ${feature.iconBg} flex items-center justify-center mb-4`}>
+                    <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-umbra-muted leading-relaxed">
+                    {feature.body}
+                  </p>
+                </Card>
+              </div>
             </motion.div>
           ))}
         </div>

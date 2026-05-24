@@ -4,6 +4,7 @@
 
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -20,7 +21,9 @@ import {
   formatAddress,
   formatRelativeTime,
 } from "@/lib/utils";
-import { usePolicy, usePolicyHandles } from "@/hooks/useUmbraContract";
+import { usePolicy, usePolicyHandles, useCancelPolicy } from "@/hooks/useUmbraContract";
+import { useAccount } from "wagmi";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Shield,
@@ -33,15 +36,38 @@ import {
   FileText,
   Zap,
   RefreshCw,
+  XCircle,
 } from "lucide-react";
 
 export default function PolicyDetailPage() {
   const params = useParams();
   const router = useRouter();
   const policyId = Number(params.id);
+  const { address } = useAccount();
 
-  const { data: policy, isLoading } = usePolicy(policyId);
+  const { data: policy, isLoading, refetch } = usePolicy(policyId);
   const handles = usePolicyHandles(policyId);
+  const { cancelPolicy, isPending: isCancelling } = useCancelPolicy();
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+
+  const handleCancel = async () => {
+    try {
+      const txHash = await toast.promise(
+        cancelPolicy(policyId),
+        {
+          loading: "Submitting cancellation…",
+          success: "Policy cancelled successfully",
+          error: (e: unknown) => `Cancel failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+        }
+      );
+      if (txHash) {
+        setShowCancelConfirm(false);
+        refetch();
+      }
+    } catch {
+      // toast.promise already handles the error display
+    }
+  };
 
   if (isLoading) {
     return (
@@ -105,6 +131,41 @@ export default function PolicyDetailPage() {
             Settle Policy
           </Button>
         )}
+        {policy.status === 0 &&
+          address &&
+          (policy.holder as string).toLowerCase() === address.toLowerCase() && (
+            <>
+              {showCancelConfirm ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-umbra-muted">Are you sure?</span>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? "Cancelling…" : "Confirm Cancel"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCancelConfirm(false)}
+                  >
+                    Keep
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  <XCircle className="w-4 h-4" />
+                  Cancel Policy
+                </Button>
+              )}
+            </>
+          )}
       </div>
 
       {/* 3-column layout */}

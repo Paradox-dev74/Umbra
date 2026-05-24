@@ -33,46 +33,65 @@ export const ORACLE_FEEDS: Record<
   string,
   {
     name: string;
+    /** On-chain feed address (Chainlink AggregatorV3 on Sepolia for real feeds) */
     address: string;
+    /** Set when there is a real Chainlink AggregatorV3 address to query */
+    chainlinkAddress?: string;
     unit: string;
+    /** Fallback / initial display value */
     currentValue: number;
     trend: "up" | "down" | "stable";
+    /** True for feeds that have no real on-chain data (testnet only) */
+    simulated?: boolean;
   }
 > = {
-  BALTIC_DRY: {
-    name: "Baltic Dry Index",
-    address: "0x1111000000000000000000000000000000000001",
-    unit: "BDI Points",
-    currentValue: 1247,
+  ETH_USD: {
+    name: "ETH / USD",
+    address: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+    chainlinkAddress: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
+    unit: "USD",
+    currentValue: 3200,
     trend: "up",
   },
-  FREIGHTOS: {
-    name: "Freightos FBX",
-    address: "0x1111000000000000000000000000000000000002",
-    unit: "USD/FEU",
-    currentValue: 284,
-    trend: "down",
-  },
-  WEATHER_IDX: {
-    name: "Weather Risk Index",
-    address: "0x1111000000000000000000000000000000000003",
-    unit: "Index Points",
-    currentValue: 847,
+  BTC_USD: {
+    name: "BTC / USD",
+    address: "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43",
+    chainlinkAddress: "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43",
+    unit: "USD",
+    currentValue: 65000,
     trend: "up",
+  },
+  LINK_USD: {
+    name: "LINK / USD",
+    address: "0xc59E3633BAAC79493d908e63626716e204a45EdF",
+    chainlinkAddress: "0xc59E3633BAAC79493d908e63626716e204a45EdF",
+    unit: "USD",
+    currentValue: 14.5,
+    trend: "stable",
   },
   USDC_USD: {
-    name: "USDC/USD",
-    address: "0x1111000000000000000000000000000000000004",
+    name: "USDC / USD",
+    address: "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
+    chainlinkAddress: "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
     unit: "USD",
     currentValue: 1.0001,
     trend: "stable",
   },
-  ETH_USD: {
-    name: "ETH/USD",
-    address: "0x1111000000000000000000000000000000000005",
-    unit: "USD",
-    currentValue: 3284.5,
+  BALTIC_DRY: {
+    name: "Baltic Dry Index",
+    address: "0x0000000000000000000000000000000000000000",
+    unit: "BDI Points",
+    currentValue: 1247,
     trend: "up",
+    simulated: true,
+  },
+  SHIPPING_FBX: {
+    name: "Freightos FBX",
+    address: "0x0000000000000000000000000000000000000000",
+    unit: "USD/FEU",
+    currentValue: 284,
+    trend: "down",
+    simulated: true,
   },
 };
 

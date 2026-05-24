@@ -306,4 +306,51 @@ export const UMBRA_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  /* ── cancelPolicy (added in v2) ── */
+  {
+    inputs: [{ internalType: "uint256", name: "policyId", type: "uint256" }],
+    name: "cancelPolicy",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: "uint256", name: "policyId", type: "uint256" }],
+    name: "PolicyCancelled",
+    type: "event",
+  },
+] as const;
+
+/* ═══════════════════════════════════════════════════════════
+   Chainlink AggregatorV3 ABI (for latestRoundData price reads)
+   ═══════════════════════════════════════════════════════════ */
+export const CHAINLINK_AGGREGATOR_ABI = [
+  {
+    inputs: [],
+    name: "latestRoundData",
+    outputs: [
+      { internalType: "uint80",  name: "roundId",         type: "uint80"  },
+      { internalType: "int256",  name: "answer",          type: "int256"  },
+      { internalType: "uint256", name: "startedAt",       type: "uint256" },
+      { internalType: "uint256", name: "updatedAt",       type: "uint256" },
+      { internalType: "uint80",  name: "answeredInRound", type: "uint80"  },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "description",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;

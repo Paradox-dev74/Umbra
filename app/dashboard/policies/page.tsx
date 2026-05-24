@@ -61,7 +61,7 @@ export default function PoliciesPage() {
               Loading policies from chain…
             </div>
           ) : (
-            <PolicyTable policies={policies} />
+            <PolicyTable policies={policies} isLoading={isLoading} />
           )}
         </Card>
       </motion.div>

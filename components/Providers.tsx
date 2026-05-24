@@ -14,6 +14,7 @@ import { CofheProvider, createCofheConfig, useCofheAutoConnect } from "@cofhe/re
 import { chains } from "@cofhe/sdk/chains";
 
 import "@rainbow-me/rainbowkit/styles.css";
+import { Toaster } from "sonner";
 
 // CoFHE config — Ethereum Sepolia supported
 // chains is a keyed object; createCofheConfig needs an array
@@ -53,6 +54,17 @@ export function Providers({ children }: { children: ReactNode }) {
             modalSize="compact"
           >
             <CofheAutoConnector />
+            <Toaster
+              theme="dark"
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "#050D1A",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#fff",
+                },
+              }}
+            />
             {children}
           </RainbowKitProvider>
         </CofheProvider>

@@ -74,6 +74,8 @@ interface IUmbra {
         address indexed disputedBy
     );
 
+    event PolicyCancelled(uint256 indexed policyId);
+
     /* ═══════════════════════════════════════════════════════
        Core Functions
        ═══════════════════════════════════════════════════════ */

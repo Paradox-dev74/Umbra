@@ -258,6 +258,19 @@ contract UmbraInsurance is IUmbra {
         emit PolicyDisputed(policyId, msg.sender);
     }
 
+    /**
+     * @notice Cancel an active policy. Only the policy holder can cancel
+     *         and only while the policy status is Active.
+     * @param policyId The policy to cancel
+     */
+    function cancelPolicy(uint256 policyId) external policyExists(policyId) whenNotPaused {
+        Policy storage policy = policies[policyId];
+        require(msg.sender == policy.holder, "Umbra: not holder");
+        require(policy.status == PolicyStatus.Active, "Umbra: not active");
+        policy.status = PolicyStatus.Cancelled;
+        emit PolicyCancelled(policyId);
+    }
+
     /* ═══════════════════════════════════════════════════════
        View
        ═══════════════════════════════════════════════════════ */

@@ -25,10 +25,30 @@ interface PolicyTableProps {
     resolvedBlock: bigint;
     settlementTx: `0x${string}`;
   }>;
+  isLoading?: boolean;
 }
 
-export function PolicyTable({ policies }: PolicyTableProps) {
-  if (policies.length === 0) {
+function SkeletonRows() {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <tr key={i} className="border-b border-white/[0.04]">
+          {[...Array(7)].map((_, j) => (
+            <td key={j} className="py-3 px-4">
+              <div
+                className="h-4 rounded-md bg-white/[0.06] animate-pulse"
+                style={{ width: `${60 + ((i * 7 + j) % 4) * 10}%` }}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+export function PolicyTable({ policies, isLoading }: PolicyTableProps) {
+  if (!isLoading && policies.length === 0) {
     return (
       <div className="text-center py-20">
         <div className="text-5xl mb-4">🔒</div>
@@ -88,7 +108,10 @@ export function PolicyTable({ policies }: PolicyTableProps) {
           </tr>
         </thead>
         <tbody>
-          {policies.map((policy, i) => {
+          {isLoading ? (
+            <SkeletonRows />
+          ) : (
+            policies.map((policy, i) => {
             const category = RISK_CATEGORIES[policy.riskCategory];
             return (
               <motion.tr
@@ -154,7 +177,8 @@ export function PolicyTable({ policies }: PolicyTableProps) {
                 </td>
               </motion.tr>
             );
-          })}
+            })
+          )}
         </tbody>
       </table>
     </div>

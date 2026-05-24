@@ -9,7 +9,7 @@ import { StatCounter } from "@/components/ui/StatCounter";
 const stats = [
   { value: 847, prefix: "$", suffix: "B+", label: "Parametric Insurance Market", decimals: 0 },
   { value: 100, prefix: "", suffix: "%", label: "Policy Terms Encrypted On-Chain", decimals: 0 },
-  { value: 2.1, prefix: "", suffix: "s", label: "Average FHE Oracle Resolution", decimals: 1 },
+  { value: 5, prefix: "", suffix: "", label: "Supported Risk Categories", decimals: 0 },
   { value: 0, prefix: "$", suffix: "", label: "Competitor Visibility Into Your Risk", decimals: 0 },
 ];
 

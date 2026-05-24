@@ -155,3 +155,19 @@ export function useResolveWithOracle() {
 
   return { resolveWithOracle, isPending, error };
 }
+
+/* ── Hook: write — cancel policy (holder only) ──────────── */
+export function useCancelPolicy() {
+  const { writeContractAsync, isPending, error } = useWriteContract();
+
+  const cancelPolicy = async (policyId: number) => {
+    return writeContractAsync({
+      address: UMBRA_CONTRACT_ADDRESS,
+      abi: UMBRA_ABI,
+      functionName: "cancelPolicy",
+      args: [BigInt(policyId)],
+    });
+  };
+
+  return { cancelPolicy, isPending, error };
+}

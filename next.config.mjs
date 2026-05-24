@@ -13,6 +13,8 @@ const nextConfig = {
         tls: false,
         child_process: false,
         "fs/promises": false,
+        "pino-pretty": false,
+        "@react-native-async-storage/async-storage": false,
       };
     }
     return config;
