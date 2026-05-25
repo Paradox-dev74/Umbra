@@ -1,9 +1,6 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Animated Stats Bar
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
+import { motion } from "framer-motion";
 import { StatCounter } from "@/components/ui/StatCounter";
 
 const stats = [
@@ -15,20 +12,38 @@ const stats = [
 
 export function StatsBar() {
   return (
-    <section className="w-full bg-umbra-card border-y border-white/[0.06]">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section id="product" className="relative w-full border-y border-white/[0.06]">
+      <div
+        className="absolute inset-0 opacity-50"
+        style={{
+          background: "linear-gradient(90deg, rgba(34,211,238,0.04) 0%, transparent 50%, rgba(167,139,250,0.04) 100%)",
+        }}
+      />
+      <div className="relative max-w-7xl mx-auto px-6 py-16 md:py-20">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-10 md:gap-8"
+        >
           {stats.map((stat, i) => (
-            <StatCounter
+            <motion.div
               key={i}
-              value={stat.value}
-              prefix={stat.prefix}
-              suffix={stat.suffix}
-              decimals={stat.decimals}
-              label={stat.label}
-            />
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08 }}
+            >
+              <StatCounter
+                value={stat.value}
+                prefix={stat.prefix}
+                suffix={stat.suffix}
+                decimals={stat.decimals}
+                label={stat.label}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

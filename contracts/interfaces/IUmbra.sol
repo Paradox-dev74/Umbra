@@ -3,27 +3,20 @@ pragma solidity ^0.8.25;
 
 import {InEuint64} from "@fhenixprotocol/cofhe-contracts/ICofhe.sol";
 
-/**
- * @title IUmbra
- * @notice Interface for the Umbra confidential parametric insurance protocol
- */
 interface IUmbra {
-    /* ═══════════════════════════════════════════════════════
-       Enums
-       ═══════════════════════════════════════════════════════ */
-
     enum PolicyStatus {
-        Active,           // 0 — Policy is live, oracle monitoring
-        OracleTriggered,  // 1 — Oracle threshold breached
-        Settled,          // 2 — Payout completed via Privara
-        Expired,          // 3 — Policy passed expiry block
-        Disputed,         // 4 — Under dispute / review
-        Cancelled         // 5 — Cancelled by holder before trigger
+        Active,
+        OracleTriggered,
+        Settled,
+        Expired,
+        Disputed,
+        Cancelled
     }
 
-    /* ═══════════════════════════════════════════════════════
-       Structs
-       ═══════════════════════════════════════════════════════ */
+    enum PolicyMode {
+        SingleThreshold,
+        IndexBand
+    }
 
     struct Policy {
         uint256 id;
@@ -37,11 +30,8 @@ interface IUmbra {
         bytes32 policyHash;
         uint256 resolvedBlock;
         bytes32 settlementTx;
+        PolicyMode policyMode;
     }
-
-    /* ═══════════════════════════════════════════════════════
-       Events
-       ═══════════════════════════════════════════════════════ */
 
     event PolicyCreated(
         uint256 indexed policyId,
@@ -51,34 +41,47 @@ interface IUmbra {
         bytes32 policyHash
     );
 
-    event OracleResolved(
-        uint256 indexed policyId,
-        uint256 oracleValue,
-        bool triggered
-    );
+    event PolicyCreatedV3(uint256 indexed policyId, uint8 policyMode);
 
-    event PolicyTriggered(
+    /// @notice Resolution complete — oracle value is public (parametric design)
+    event PolicyResolved(uint256 indexed policyId, uint256 oracleValue);
+
+    event ChainlinkResolved(
         uint256 indexed policyId,
+        address indexed feed,
         uint256 oracleValue
     );
 
-    event PolicySettled(
-        uint256 indexed policyId,
-        bytes32 settlementTx
-    );
+    event PolicySettled(uint256 indexed policyId, bytes32 settlementTx);
 
     event PolicyExpired(uint256 indexed policyId);
 
     event PolicyDisputed(
         uint256 indexed policyId,
-        address indexed disputedBy
+        address indexed disputedBy,
+        address indexed arbitrator
     );
 
     event PolicyCancelled(uint256 indexed policyId);
 
-    /* ═══════════════════════════════════════════════════════
-       Core Functions
-       ═══════════════════════════════════════════════════════ */
+    event DisputeResolved(uint256 indexed policyId, bool upheld);
+
+    event ViewerAccessGranted(
+        uint256 indexed policyId,
+        address indexed viewer,
+        bool coverage,
+        bool premium,
+        bool threshold,
+        bool deductible,
+        bool ratioValid,
+        bool trigger,
+        bool payout,
+        bool proximity
+    );
+
+    event GlobalExposureViewerGranted(address indexed viewer);
+
+    event ProximityFlagUpdated(uint256 indexed policyId);
 
     function createPolicy(
         address _beneficiary,
@@ -91,25 +94,64 @@ interface IUmbra {
         bytes32 _policyHash
     ) external returns (uint256 policyId);
 
+    function createPolicyV2(
+        address _beneficiary,
+        uint8 _riskCategory,
+        address _oracleFeed,
+        uint256 _expiryBlock,
+        InEuint64 calldata _inCoverage,
+        InEuint64 calldata _inPremium,
+        InEuint64 calldata _inThreshold,
+        InEuint64 calldata _inDeductible,
+        bytes32 _policyHash
+    ) external returns (uint256 policyId);
+
+    function createPolicyV3(
+        address _beneficiary,
+        uint8 _riskCategory,
+        address _oracleFeed,
+        uint256 _expiryBlock,
+        InEuint64 calldata _inCoverage,
+        InEuint64 calldata _inPremium,
+        InEuint64 calldata _inFloorOrThreshold,
+        InEuint64 calldata _inCeiling,
+        InEuint64 calldata _inDeductible,
+        PolicyMode _policyMode,
+        bytes32 _policyHash
+    ) external returns (uint256 policyId);
+
     function resolveWithOracle(
         uint256 policyId,
         uint256 oracleValue,
         bool triggered
     ) external;
 
-    function markSettled(
+    function resolveWithChainlink(uint256 policyId) external;
+
+    function refreshProximityFromChainlink(uint256 policyId) external;
+
+    function markSettled(uint256 policyId, bytes32 _settlementTx) external;
+
+    function grantViewerAccess(
         uint256 policyId,
-        bytes32 _settlementTx
+        address viewer,
+        bool allowCoverage,
+        bool allowPremium,
+        bool allowThreshold,
+        bool allowDeductible,
+        bool allowRatioValid,
+        bool allowTrigger,
+        bool allowPayout,
+        bool allowProximity
     ) external;
 
-    function expirePolicy(uint256 policyId) external;
+    function grantGlobalExposureViewer(address viewer) external;
 
-    function disputePolicy(uint256 policyId) external;
+    function disputePolicy(uint256 policyId, address arbitrator) external;
 
-    /* ═══════════════════════════════════════════════════════
-       View Functions
-       ═══════════════════════════════════════════════════════ */
+    function resolveDispute(uint256 policyId, bool uphold) external;
 
-    function getPolicy(uint256 policyId) external view returns (Policy memory);
-    function getPolicyCount() external view returns (uint256);
+    function getHolderPolicyCount(address holder) external view returns (uint256);
+
+    function getHolderPolicyId(address holder, uint256 index) external view returns (uint256);
 }

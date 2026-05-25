@@ -14,26 +14,16 @@ export function findFeedByAddress(address: string) {
 export function getOracleValueForFeed(
   feedKey: string,
   chainlinkPrices: Record<string, ChainlinkPriceData | null>
-): { value: number | null; source: "chainlink" | "unavailable" } {
+): { value: number; source: "chainlink" | "simulated" } {
   const feed = ORACLE_FEEDS[feedKey];
-  if (!feed) return { value: null, source: "unavailable" };
+  if (!feed) return { value: 0, source: "simulated" };
 
   const live = chainlinkPrices[feedKey];
   if (live && !live.isStale) {
     return { value: live.price, source: "chainlink" };
   }
 
-  return { value: null, source: "unavailable" };
-}
-
-export function formatOraclePrice(value: number | null, unit = "USD"): string {
-  if (value === null) return "Unavailable";
-  if (unit === "USD") {
-    return value < 10
-      ? `$${value.toFixed(4)}`
-      : `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  }
-  return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  return { value: feed.currentValue, source: "simulated" };
 }
 
 /** Convert display threshold/bound to on-chain uint64 (matches Chainlink scaling) */
@@ -50,7 +40,8 @@ export function thresholdToUint64FromAddress(value: number, oracleFeedAddress: s
 /** Convert oracle display value to uint64 for on-chain FHE comparison */
 export function oracleValueToUint64(value: number, feedKey?: string): bigint {
   const feed = feedKey ? ORACLE_FEEDS[feedKey] : undefined;
-  if (feed?.chainlinkAddress) {
+  // Chainlink USD feeds use 8 decimals; simulated indices use whole numbers
+  if (feed?.chainlinkAddress && !feed.simulated) {
     return BigInt(Math.round(value * 1e8));
   }
   return BigInt(Math.round(value));

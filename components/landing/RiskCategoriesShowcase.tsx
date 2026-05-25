@@ -1,13 +1,9 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Risk Categories Showcase
-   Horizontal scrolling row of 5 category cards
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { LandingSection } from "./LandingSection";
 import { RISK_CATEGORIES } from "@/lib/constants";
 
 const categoryOracles = [
@@ -20,49 +16,40 @@ const categoryOracles = [
 
 export function RiskCategoriesShowcase() {
   return (
-    <section className="w-full bg-umbra-card py-24 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6">
-        <motion.h2
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-3xl md:text-4xl font-extrabold text-center mb-12"
-        >
-          <span className="text-white">Supported </span>
-          <span className="text-umbra-blue">Risk Categories</span>
-        </motion.h2>
-
-        {/* Horizontal scroll container */}
-        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-6 px-6 scrollbar-hide">
-          {RISK_CATEGORIES.map((cat, i) => (
-            <motion.div
-              key={cat.id}
-              initial={{ opacity: 0, x: 40 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="snap-start"
-            >
-              <Card className="p-5 min-w-[280px] max-w-[300px] h-full flex flex-col" glow>
-                <div className="text-3xl mb-3">{cat.icon}</div>
-                <h3 className="text-lg font-bold text-white mb-1">
-                  {cat.label}
-                </h3>
-                <p className="text-xs text-umbra-muted mb-3">
-                  Oracle: {categoryOracles[i].oracle}
-                </p>
-                <p className="text-sm text-umbra-muted flex-1 mb-4">
-                  {categoryOracles[i].example}
-                </p>
-                <Badge variant="info" className="self-start font-mono text-[10px]">
-                  {cat.fheOperator}
-                </Badge>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+    <LandingSection
+      className="bg-umbra-card/40 border-y border-white/[0.04]"
+      eyebrow="Coverage"
+      title={
+        <>
+          Five risk categories.{" "}
+          <span className="text-umbra-cyan">One privacy model.</span>
+        </>
+      }
+    >
+      <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory -mx-6 px-6 scrollbar-hide">
+        {RISK_CATEGORIES.map((cat, i) => (
+          <motion.div
+            key={cat.id}
+            initial={{ opacity: 0, x: 32 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.07, duration: 0.5 }}
+            className="snap-start shrink-0"
+          >
+            <Card glass hover className="p-6 w-[280px] h-full flex flex-col">
+              <div className="text-3xl mb-3">{cat.icon}</div>
+              <h3 className="text-lg font-bold text-white mb-1">{cat.label}</h3>
+              <p className="text-xs text-umbra-muted mb-2">Oracle: {categoryOracles[i].oracle}</p>
+              <p className="text-sm text-umbra-muted flex-1 mb-4 leading-relaxed">
+                {categoryOracles[i].example}
+              </p>
+              <Badge variant="info" className="self-start font-mono text-[10px]">
+                {cat.fheOperator}
+              </Badge>
+            </Card>
+          </motion.div>
+        ))}
       </div>
-    </section>
+    </LandingSection>
   );
 }

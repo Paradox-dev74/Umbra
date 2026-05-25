@@ -94,11 +94,7 @@ export function PrivatePortfolioCard() {
               disabled={!clientReady || isDecrypting || activePolicies.length === 0}
             >
               <Lock className="w-4 h-4" />
-              {activePolicies.length === 0
-                ? "No active policies to decrypt"
-                : isDecrypting
-                  ? "Decrypting portfolio…"
-                  : "Reveal My Portfolio Totals"}
+              {isDecrypting ? "Decrypting portfolio…" : "Reveal My Portfolio Totals"}
             </Button>
           </>
         ) : (

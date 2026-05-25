@@ -7,7 +7,7 @@
 "use client";
 
 import { useReadContracts } from "wagmi";
-import { CHAINLINK_AGGREGATOR_ABI } from "@/lib/abi";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/lib/chainlink-abi";
 import { ORACLE_FEEDS } from "@/lib/constants";
 
 export interface ChainlinkPriceData {

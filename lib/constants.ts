@@ -8,7 +8,28 @@ import { sepolia } from "viem/chains";
 export { sepolia };
 
 export const UMBRA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_UMBRA_CONTRACT ??
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  "0xb424205202228CbC385A8A5E73569A0eA41d3a06") as `0x${string}`;
+
+/** Deployed trusted oracle — must use this wallet to resolve policies */
+export const UMBRA_TRUSTED_ORACLE = (process.env.NEXT_PUBLIC_UMBRA_ORACLE ??
+  "0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1") as `0x${string}`;
+
+/** V2 privacy features (deductible, exposure, ACL) — enabled after redeploying latest contract */
+export const UMBRA_V2_FEATURES =
+  process.env.NEXT_PUBLIC_UMBRA_V2 !== "false";
+
+/** V3: index bands, exposure FHE.sub, proximity ebool, extended ACL, global viewers */
+export const UMBRA_V3_FEATURES =
+  process.env.NEXT_PUBLIC_UMBRA_V3 !== "false";
+
+/** V4: hardened ACL, dispute arbitrator, holder indexing, oracle-only proximity */
+export const UMBRA_V4_FEATURES =
+  process.env.NEXT_PUBLIC_UMBRA_V4 !== "false";
+
+export const PolicyMode = {
+  SingleThreshold: 0,
+  IndexBand: 1,
+} as const;
 
 // Fhenix Helium kept as legacy reference (CoFHE coprocessor now live on Ethereum Sepolia)
 export const FHENIX_HELIUM_CHAIN = defineChain({

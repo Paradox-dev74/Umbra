@@ -1,10 +1,6 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Marketing Landing Page
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { StatsBar } from "@/components/landing/StatsBar";
@@ -18,26 +14,24 @@ import { Footer } from "@/components/landing/Footer";
 
 export default function LandingPage() {
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <Navbar />
-        <main>
-          <HeroSection />
-          <StatsBar />
-          <HowItWorks />
-          <ArchitectureCallout />
-          <FeatureGrid />
-          <RiskCategoriesShowcase />
-          <IntegrationLogos />
-          <CTABanner />
-        </main>
-        <Footer />
-      </motion.div>
-    </AnimatePresence>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="bg-umbra-bg"
+    >
+      <Navbar />
+      <main>
+        <HeroSection />
+        <StatsBar />
+        <HowItWorks />
+        <ArchitectureCallout />
+        <FeatureGrid />
+        <RiskCategoriesShowcase />
+        <IntegrationLogos />
+        <CTABanner />
+      </main>
+      <Footer />
+    </motion.div>
   );
 }

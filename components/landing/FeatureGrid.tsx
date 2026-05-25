@@ -1,11 +1,8 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Feature Grid (6 cards, 3×2)
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
+import { LandingSection } from "./LandingSection";
 import {
   EyeOff,
   GitBranch,
@@ -20,108 +17,74 @@ const features = [
     icon: EyeOff,
     title: "Zero Threshold Exposure",
     body: "Your strike price never touches the blockchain in plaintext. FHE ensures your trigger threshold is encrypted at rest and during every oracle comparison.",
-    gradient: "from-umbra-blue/30 via-transparent to-transparent",
-    iconBg: "bg-umbra-blue/10",
-    iconColor: "text-umbra-blue",
+    iconBg: "bg-umbra-cyan/10 text-umbra-cyan",
   },
   {
     icon: GitBranch,
     title: "Branchless Settlement",
-    body: "FHE.select prevents side-channel leakage. No public branching means external observers cannot infer payout outcomes from execution patterns.",
-    gradient: "from-umbra-violet/30 via-transparent to-transparent",
-    iconBg: "bg-umbra-violet/10",
-    iconColor: "text-umbra-violet",
+    body: "FHE.select prevents side-channel leakage. No public branching means observers cannot infer payout outcomes from execution patterns.",
+    iconBg: "bg-umbra-violet/10 text-umbra-violet",
   },
   {
     icon: Radio,
     title: "Real Chainlink Oracles",
-    body: "Live Chainlink price feeds on Sepolia are evaluated homomorphically against your encrypted thresholds — oracle values are public, your threshold is not.",
-    gradient: "from-amber-500/30 via-transparent to-transparent",
-    iconBg: "bg-amber-500/10",
-    iconColor: "text-amber-400",
+    body: "Live Chainlink price feeds on Sepolia are evaluated homomorphically against your encrypted thresholds.",
+    iconBg: "bg-umbra-success/10 text-umbra-success",
   },
   {
     icon: ShieldCheck,
     title: "Confidential Payouts",
-    body: "Privara hides transfer amounts and treasury movements. Settlement executes without revealing your financial exposure to counterparties or observers.",
-    gradient: "from-umbra-success/30 via-transparent to-transparent",
-    iconBg: "bg-umbra-success/10",
-    iconColor: "text-umbra-success",
+    body: "Privara hides transfer amounts and treasury movements. Settlement executes without revealing your financial exposure.",
+    iconBg: "bg-umbra-cyan/10 text-umbra-cyan",
   },
   {
     icon: KeyRound,
     title: "Sealed Decryption",
-    body: "Only you can read your policy parameters using CoFHE sealed output. The Threshold Network performs decryption — no single party holds a decryption key.",
-    gradient: "from-rose-500/30 via-transparent to-transparent",
-    iconBg: "bg-rose-500/10",
-    iconColor: "text-rose-400",
+    body: "Only authorized parties decrypt via CoFHE Threshold Network. Auto-relock after 90 seconds in the UI.",
+    iconBg: "bg-umbra-violet/10 text-umbra-violet",
   },
   {
     icon: Layers,
-    title: "5 Risk Categories",
-    body: "Supply chain delays, weather indices, commodity prices, shipping costs, and FX volatility — all with FHE-protected hidden thresholds on Ethereum Sepolia.",
-    gradient: "from-cyan-500/30 via-transparent to-transparent",
-    iconBg: "bg-cyan-500/10",
-    iconColor: "text-cyan-400",
+    title: "Exposure Aggregation",
+    body: "Homomorphic sums track per-holder and protocol-wide encrypted exposure for portfolio and reinsurance views.",
+    iconBg: "bg-umbra-blue/10 text-umbra-blue",
   },
 ];
 
 export function FeatureGrid() {
   return (
-    <section id="features" className="w-full bg-umbra-bg py-24">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-extrabold">
-            <span className="text-white">Built for </span>
-            <span className="text-umbra-blue">Enterprise </span>
-            <span className="text-white">Privacy</span>
-          </h2>
-        </motion.div>
-
-        {/* 6-card grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((feature, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: i * 0.08,
-                duration: 0.5,
-                type: "spring",
-                stiffness: 100,
-              }}
-            >
-              {/* Gradient border wrapper */}
-              <div
-                className={`group relative rounded-xl bg-gradient-to-br ${feature.gradient} p-[1px] transition-all duration-300 hover:opacity-100 h-full`}
-              >
-                <Card
-                  className="relative h-full rounded-xl p-6 bg-umbra-card transition-all duration-300 group-hover:shadow-[0_0_24px_rgba(59,130,246,0.05)]"
-                >
-                  <div className={`w-10 h-10 rounded-lg ${feature.iconBg} flex items-center justify-center mb-4`}>
-                    <feature.icon className={`w-5 h-5 ${feature.iconColor}`} />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white mb-2">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-umbra-muted leading-relaxed">
-                    {feature.body}
-                  </p>
-                </Card>
+    <LandingSection
+      id="features"
+      className="bg-umbra-card/30"
+      eyebrow="Capabilities"
+      title={
+        <>
+          Enterprise-grade{" "}
+          <span className="bg-gradient-to-r from-umbra-cyan to-umbra-violet bg-clip-text text-transparent">
+            privacy infrastructure
+          </span>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {features.map((feature, i) => (
+          <motion.div
+            key={feature.title}
+            initial={{ opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.06, duration: 0.5 }}
+          >
+            <Card glass hover gradientBorder className="h-full p-6 group">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center mb-4 ${feature.iconBg} group-hover:scale-110 transition-transform duration-300`}>
+                <feature.icon className="w-5 h-5" />
               </div>
-            </motion.div>
-          ))}
-        </div>
+              <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+              <p className="text-sm text-umbra-muted leading-relaxed">{feature.body}</p>
+            </Card>
+          </motion.div>
+        ))}
       </div>
-    </section>
+    </LandingSection>
   );
 }

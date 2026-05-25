@@ -1,7 +1,3 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Dark Card Component
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { cn } from "@/lib/utils";
@@ -10,31 +6,38 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   glow?: boolean;
-  glowColor?: "blue" | "violet" | "green";
+  glowColor?: "cyan" | "blue" | "violet" | "green";
   hover?: boolean;
+  glass?: boolean;
+  gradientBorder?: boolean;
   onClick?: () => void;
 }
 
 const glowStyles = {
-  blue: "hover:border-umbra-blue/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.06)]",
-  violet: "hover:border-umbra-violet/30 hover:shadow-[0_0_20px_rgba(139,92,246,0.06)]",
-  green: "hover:border-umbra-success/30 hover:shadow-[0_0_20px_rgba(16,185,129,0.06)]",
+  cyan: "hover:border-umbra-cyan/30 hover:shadow-[0_0_32px_rgba(34,211,238,0.08)]",
+  blue: "hover:border-umbra-blue/30 hover:shadow-[0_0_32px_rgba(59,130,246,0.08)]",
+  violet: "hover:border-umbra-violet/30 hover:shadow-[0_0_32px_rgba(167,139,250,0.08)]",
+  green: "hover:border-umbra-success/30 hover:shadow-[0_0_32px_rgba(52,211,153,0.08)]",
 };
 
 export function Card({
   children,
   className,
   glow = false,
-  glowColor = "blue",
+  glowColor = "cyan",
   hover = false,
+  glass = false,
+  gradientBorder = false,
   onClick,
 }: CardProps) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        "rounded-xl border border-white/[0.06] bg-umbra-card shadow-card-dark",
-        hover && "transition-all duration-300 cursor-pointer hover:inset-shadow-[0_0_20px_rgba(59,130,246,0.05)]",
+        "rounded-2xl border border-white/[0.06] bg-umbra-card shadow-card-dark shadow-inner-glow overflow-hidden",
+        glass && "glass-panel bg-umbra-card/80",
+        gradientBorder && "umbra-gradient-border border-0",
+        hover && "transition-all duration-300 cursor-pointer hover:-translate-y-0.5",
         glow && glowStyles[glowColor],
         onClick && "cursor-pointer",
         className
@@ -53,7 +56,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <div className={cn("px-6 py-4 border-b border-white/[0.06]", className)}>
+    <div className={cn("px-6 py-4 border-b border-white/[0.06] bg-white/[0.02]", className)}>
       {children}
     </div>
   );

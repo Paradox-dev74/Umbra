@@ -19,6 +19,8 @@ interface PolicyEncryptionParams {
   coverageAmountUsdc: bigint;
   premiumUsdc: bigint;
   triggerThreshold: bigint;
+  ceilingThreshold?: bigint;
+  deductibleUsdc?: bigint;
 }
 
 export function useFhenix() {

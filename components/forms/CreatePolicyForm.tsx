@@ -13,11 +13,16 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { RISK_CATEGORIES, ORACLE_FEEDS, UMBRA_CONTRACT_ADDRESS } from "@/lib/constants";
+import { RISK_CATEGORIES, ORACLE_FEEDS, UMBRA_CONTRACT_ADDRESS, UMBRA_V3_FEATURES, PolicyMode } from "@/lib/constants";
 import { UMBRA_ABI } from "@/lib/abi";
+import { asInEuint64 } from "@/lib/fhenix";
 import { useFhenix } from "@/hooks/useFhenix";
+import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
+import { getOracleValueForFeed, thresholdToUint64 } from "@/lib/oracle-utils";
 import type { CreatePolicyFormData, FormStep } from "@/lib/types";
 import { generatePolicyHash } from "@/lib/utils";
+import { toast } from "sonner";
+import { isAddress } from "viem";
 import {
   Lock,
   ArrowRight,
@@ -40,9 +45,12 @@ const defaultForm: CreatePolicyFormData = {
   beneficiaryAddress: "",
   riskCategory: 0,
   policyReferenceName: "",
+  policyMode: "single",
   coverageAmountUsdc: "",
   triggerThreshold: "",
+  ceilingThreshold: "",
   premiumUsdc: "",
+  deductibleUsdc: "0",
   coverageDurationDays: "",
   oracleFeed: "BALTIC_DRY",
   resolutionMode: "automatic",
@@ -61,6 +69,7 @@ export function CreatePolicyForm() {
   const { data: blockNumber } = useBlockNumber({ watch: false });
   const { encryptPolicy, clientReady, isEncrypting } = useFhenix();
   const { writeContractAsync } = useWriteContract();
+  const chainlinkPrices = useChainlinkPrices();
 
   const [currentStep, setCurrentStep] = useState<FormStep>(1);
   const [form, setForm] = useState<CreatePolicyFormData>(defaultForm);
@@ -117,11 +126,28 @@ export function CreatePolicyForm() {
 
   const handleSubmit = useCallback(async () => {
     if (!connectedAddress) {
-      alert("Connect your wallet first.");
+      toast.error("Connect your wallet first");
       return;
     }
     if (!clientReady) {
-      alert("CoFHE client not ready. Please wait a moment and try again.");
+      toast.error("CoFHE client not ready — wait a moment and try again");
+      return;
+    }
+    if (form.beneficiaryAddress && !isAddress(form.beneficiaryAddress)) {
+      toast.error("Invalid beneficiary address");
+      return;
+    }
+    const coverage = parseFloat(form.coverageAmountUsdc || "0");
+    const premium = parseFloat(form.premiumUsdc || "0");
+    const threshold = parseFloat(form.triggerThreshold || "0");
+    const ceiling = parseFloat(form.ceilingThreshold || "0");
+    const isBand = form.policyMode === "band";
+    if (coverage <= 0 || premium <= 0 || threshold <= 0) {
+      toast.error("Enter valid coverage, premium, and threshold amounts");
+      return;
+    }
+    if (isBand && (ceiling <= 0 || ceiling <= threshold)) {
+      toast.error("Band mode requires ceiling greater than floor");
       return;
     }
 
@@ -130,15 +156,20 @@ export function CreatePolicyForm() {
 
     try {
       // Stage 1 → Stage 2: FHE encrypt all three terms
-      const coverageUsdc = BigInt(Math.round(parseFloat(form.coverageAmountUsdc || "0") * 1_000_000));
-      const premiumUsdc  = BigInt(Math.round(parseFloat(form.premiumUsdc || "0") * 1_000_000));
-      const threshold    = BigInt(Math.round(parseFloat(form.triggerThreshold || "0")));
+      const coverageUsdc = BigInt(Math.round(coverage * 1_000_000));
+      const premiumUsdc  = BigInt(Math.round(premium * 1_000_000));
+      const feedKey = form.oracleFeed;
+      const thresholdVal = thresholdToUint64(threshold, feedKey);
+      const ceilingVal = isBand ? thresholdToUint64(ceiling, feedKey) : 0n;
+      const deductibleUsdc = BigInt(Math.round(parseFloat(form.deductibleUsdc || "0") * 1_000_000));
 
       setSubmitStage(2);
       const encrypted = await encryptPolicy({
         coverageAmountUsdc: coverageUsdc,
         premiumUsdc,
-        triggerThreshold: threshold,
+        triggerThreshold: thresholdVal,
+        ceilingThreshold: isBand ? ceilingVal : undefined,
+        deductibleUsdc,
       });
 
       // Stage 3: Build contract call args
@@ -157,27 +188,56 @@ export function CreatePolicyForm() {
 
       // Stage 4: submit to Sepolia
       setSubmitStage(4);
-      const hash = await writeContractAsync({
-        address: UMBRA_CONTRACT_ADDRESS,
-        abi: UMBRA_ABI,
-        functionName: "createPolicy",
-        args: [
-          beneficiary,
-          form.riskCategory as number,
-          oracleFeed,
-          expiryBlock,
-          encrypted.encCoverage  as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
-          encrypted.encPremium   as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
-          encrypted.encThreshold as { ctHash: bigint; securityZone: number; utype: number; signature: `0x${string}` },
-          policyHash,
-        ],
-      });
+      const encArgs = {
+        encCoverage: asInEuint64(encrypted.encCoverage),
+        encPremium: asInEuint64(encrypted.encPremium),
+        encThreshold: asInEuint64(encrypted.encThreshold),
+        encCeiling: asInEuint64(encrypted.encCeiling!),
+        encDeductible: asInEuint64(encrypted.encDeductible!),
+      };
+
+      const hash = UMBRA_V3_FEATURES
+        ? await writeContractAsync({
+            address: UMBRA_CONTRACT_ADDRESS,
+            abi: UMBRA_ABI,
+            functionName: "createPolicyV3",
+            args: [
+              beneficiary,
+              form.riskCategory as number,
+              oracleFeed,
+              expiryBlock,
+              encArgs.encCoverage,
+              encArgs.encPremium,
+              encArgs.encThreshold,
+              encArgs.encCeiling,
+              encArgs.encDeductible,
+              isBand ? PolicyMode.IndexBand : PolicyMode.SingleThreshold,
+              policyHash,
+            ],
+          })
+        : await writeContractAsync({
+            address: UMBRA_CONTRACT_ADDRESS,
+            abi: UMBRA_ABI,
+            functionName: "createPolicyV2",
+            args: [
+              beneficiary,
+              form.riskCategory as number,
+              oracleFeed,
+              expiryBlock,
+              encArgs.encCoverage,
+              encArgs.encPremium,
+              encArgs.encThreshold,
+              encArgs.encDeductible,
+              policyHash,
+            ],
+          });
 
       setTxHash(hash);
       setSubmitted(true);
+      toast.success("Policy created with FHE-encrypted terms");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      alert(`Transaction failed: ${msg}`);
+      toast.error(`Transaction failed: ${msg}`);
     } finally {
       setSubmitting(false);
       setSubmitStage(0);
@@ -317,13 +377,13 @@ export function CreatePolicyForm() {
 
                 <div className="space-y-2">
                   <label className="text-sm text-umbra-muted">
-                    Enterprise Wallet
+                    Your Wallet (Policy Holder)
                   </label>
                   <input
                     type="text"
-                    value="0xABcD000000000000000000000000000000001234"
+                    value={connectedAddress ?? "Connect wallet to continue"}
                     readOnly
-                    className="w-full bg-umbra-bg border border-white/10 rounded-lg px-4 py-3 text-white/60 text-sm font-mono cursor-not-allowed"
+                    className="w-full bg-umbra-bg border border-white/10 rounded-lg px-4 py-3 text-white/80 text-sm font-mono cursor-not-allowed"
                   />
                 </div>
 
@@ -415,6 +475,31 @@ export function CreatePolicyForm() {
 
               <Card>
                 <CardBody className="space-y-6">
+                  {UMBRA_V3_FEATURES && (
+                    <div className="space-y-2">
+                      <label className="text-sm text-umbra-muted">Policy Trigger Mode</label>
+                      <div className="flex gap-2">
+                        {(["single", "band"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => updateForm("policyMode", mode)}
+                            className={`flex-1 p-3 rounded-lg border text-sm transition-all ${
+                              form.policyMode === mode
+                                ? "border-umbra-violet/40 bg-umbra-violet/10 text-white"
+                                : "border-white/5 text-umbra-muted hover:border-white/10"
+                            }`}
+                          >
+                            {mode === "single" ? "Single Threshold" : "Index Band (V3)"}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-umbra-muted">
+                        Band mode: FHE.and(FHE.gte(oracle, floor), FHE.lte(oracle, ceiling))
+                      </p>
+                    </div>
+                  )}
+
                   {renderEncryptedField(
                     "Coverage Amount (USDC)",
                     "coverage",
@@ -426,14 +511,27 @@ export function CreatePolicyForm() {
                   )}
 
                   {renderEncryptedField(
-                    "Trigger Threshold",
+                    form.policyMode === "band" ? "Band Floor" : "Trigger Threshold",
                     "threshold",
                     form.triggerThreshold,
                     (val) => updateForm("triggerThreshold", val),
                     handleThresholdBlur,
-                    "e.g., 1200 for Baltic Dry Index, 847 for Weather Index",
-                    "euint32"
+                    form.policyMode === "band"
+                      ? "e.g., 1100 (lower bound)"
+                      : "e.g., 1200 for Baltic Dry Index, 847 for Weather Index",
+                    "euint64"
                   )}
+
+                  {form.policyMode === "band" &&
+                    renderEncryptedField(
+                      "Band Ceiling",
+                      "premium",
+                      form.ceilingThreshold,
+                      (val) => updateForm("ceilingThreshold", val),
+                      handlePremiumBlur,
+                      "e.g., 1300 (upper bound)",
+                      "euint64"
+                    )}
 
                   {renderEncryptedField(
                     "Premium Amount (USDC)",
@@ -442,8 +540,25 @@ export function CreatePolicyForm() {
                     (val) => updateForm("premiumUsdc", val),
                     handlePremiumBlur,
                     "e.g., 48000",
-                    "euint32"
+                    "euint64"
                   )}
+
+                  <div className="space-y-2">
+                    <label className="text-sm text-umbra-muted flex items-center gap-2">
+                      Encrypted Deductible (USDC)
+                      <span className="text-[10px] text-umbra-violet">FHE.sub on payout</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={form.deductibleUsdc}
+                      onChange={(e) => updateForm("deductibleUsdc", e.target.value)}
+                      placeholder="e.g., 50000 (0 if none)"
+                      className="w-full bg-umbra-bg border border-umbra-violet/20 rounded-lg px-4 py-3 text-white text-sm font-mono focus:outline-none focus:border-umbra-violet/50"
+                    />
+                    <p className="text-[10px] text-umbra-muted">
+                      Premium ratio checked homomorphically: FHE.lte(premium, coverage ÷ 20)
+                    </p>
+                  </div>
 
                   {renderEncryptedField(
                     "Coverage Duration (days)",
@@ -452,7 +567,7 @@ export function CreatePolicyForm() {
                     (val) => updateForm("coverageDurationDays", val),
                     handleExpiryBlur,
                     "e.g., 90",
-                    "euint32"
+                    "plaintext"
                   )}
                 </CardBody>
               </Card>
@@ -518,7 +633,10 @@ export function CreatePolicyForm() {
                     Select Oracle Feed
                   </label>
                   <div className="space-y-2">
-                    {Object.entries(ORACLE_FEEDS).map(([key, feed]) => (
+                    {Object.entries(ORACLE_FEEDS).map(([key, feed]) => {
+                      const live = getOracleValueForFeed(key, chainlinkPrices);
+                      const displayPrice = live.value.toLocaleString();
+                      return (
                       <button
                         key={key}
                         onClick={() => updateForm("oracleFeed", key)}
@@ -538,14 +656,15 @@ export function CreatePolicyForm() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm text-umbra-blue font-mono">
-                            {feed.currentValue}
+                            {displayPrice}
                           </p>
                           <p className="text-xs text-umbra-muted">
                             {feed.unit}
+                            {live.source === "chainlink" && " · live"}
                           </p>
                         </div>
                       </button>
-                    ))}
+                    );})}
                   </div>
                 </div>
 
@@ -662,7 +781,7 @@ export function CreatePolicyForm() {
                     <span className="text-xs text-umbra-muted font-mono">
                       {generatePolicyHash({
                         name: form.policyReferenceName || "draft",
-                        enterprise: "0xdemo",
+                        enterprise: connectedAddress ?? "0x0",
                         timestamp: Date.now(),
                       }).slice(0, 20)}
                       ...

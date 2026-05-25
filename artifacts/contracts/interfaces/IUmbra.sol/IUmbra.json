@@ -13,19 +13,64 @@
           "type": "uint256"
         },
         {
+          "indexed": true,
+          "internalType": "address",
+          "name": "feed",
+          "type": "address"
+        },
+        {
           "indexed": false,
           "internalType": "uint256",
           "name": "oracleValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "ChainlinkResolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "policyId",
           "type": "uint256"
         },
         {
           "indexed": false,
           "internalType": "bool",
-          "name": "triggered",
+          "name": "upheld",
           "type": "bool"
         }
       ],
-      "name": "OracleResolved",
+      "name": "DisputeResolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "viewer",
+          "type": "address"
+        }
+      ],
+      "name": "GlobalExposureViewerGranted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        }
+      ],
+      "name": "PolicyCancelled",
       "type": "event"
     },
     {
@@ -75,9 +120,34 @@
           "type": "uint256"
         },
         {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "policyMode",
+          "type": "uint8"
+        }
+      ],
+      "name": "PolicyCreatedV3",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        },
+        {
           "indexed": true,
           "internalType": "address",
           "name": "disputedBy",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "arbitrator",
           "type": "address"
         }
       ],
@@ -108,6 +178,25 @@
         },
         {
           "indexed": false,
+          "internalType": "uint256",
+          "name": "oracleValue",
+          "type": "uint256"
+        }
+      ],
+      "name": "PolicyResolved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
           "internalType": "bytes32",
           "name": "settlementTx",
           "type": "bytes32"
@@ -124,15 +213,76 @@
           "internalType": "uint256",
           "name": "policyId",
           "type": "uint256"
+        }
+      ],
+      "name": "ProximityFlagUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "viewer",
+          "type": "address"
         },
         {
           "indexed": false,
-          "internalType": "uint256",
-          "name": "oracleValue",
-          "type": "uint256"
+          "internalType": "bool",
+          "name": "coverage",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "premium",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "threshold",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "deductible",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "ratioValid",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "trigger",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "payout",
+          "type": "bool"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "proximity",
+          "type": "bool"
         }
       ],
-      "name": "PolicyTriggered",
+      "name": "ViewerAccessGranted",
       "type": "event"
     },
     {
@@ -258,9 +408,340 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "_beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_riskCategory",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "_oracleFeed",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_expiryBlock",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inCoverage",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inPremium",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inThreshold",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inDeductible",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_policyHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "createPolicyV2",
+      "outputs": [
+        {
           "internalType": "uint256",
           "name": "policyId",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_beneficiary",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_riskCategory",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "_oracleFeed",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_expiryBlock",
+          "type": "uint256"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inCoverage",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inPremium",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inFloorOrThreshold",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inCeiling",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "ctHash",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint8",
+              "name": "securityZone",
+              "type": "uint8"
+            },
+            {
+              "internalType": "uint8",
+              "name": "utype",
+              "type": "uint8"
+            },
+            {
+              "internalType": "bytes",
+              "name": "signature",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct InEuint64",
+          "name": "_inDeductible",
+          "type": "tuple"
+        },
+        {
+          "internalType": "enum IUmbra.PolicyMode",
+          "name": "_policyMode",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_policyHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "createPolicyV3",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "arbitrator",
+          "type": "address"
         }
       ],
       "name": "disputePolicy",
@@ -271,12 +752,55 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "holder",
+          "type": "address"
+        }
+      ],
+      "name": "getHolderPolicyCount",
+      "outputs": [
+        {
           "internalType": "uint256",
-          "name": "policyId",
+          "name": "",
           "type": "uint256"
         }
       ],
-      "name": "expirePolicy",
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "holder",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "index",
+          "type": "uint256"
+        }
+      ],
+      "name": "getHolderPolicyId",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "viewer",
+          "type": "address"
+        }
+      ],
+      "name": "grantGlobalExposureViewer",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -287,87 +811,56 @@
           "internalType": "uint256",
           "name": "policyId",
           "type": "uint256"
-        }
-      ],
-      "name": "getPolicy",
-      "outputs": [
+        },
         {
-          "components": [
-            {
-              "internalType": "uint256",
-              "name": "id",
-              "type": "uint256"
-            },
-            {
-              "internalType": "address",
-              "name": "holder",
-              "type": "address"
-            },
-            {
-              "internalType": "address",
-              "name": "beneficiary",
-              "type": "address"
-            },
-            {
-              "internalType": "uint8",
-              "name": "riskCategory",
-              "type": "uint8"
-            },
-            {
-              "internalType": "address",
-              "name": "oracleFeed",
-              "type": "address"
-            },
-            {
-              "internalType": "enum IUmbra.PolicyStatus",
-              "name": "status",
-              "type": "uint8"
-            },
-            {
-              "internalType": "uint256",
-              "name": "createdBlock",
-              "type": "uint256"
-            },
-            {
-              "internalType": "uint256",
-              "name": "expiryBlock",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "policyHash",
-              "type": "bytes32"
-            },
-            {
-              "internalType": "uint256",
-              "name": "resolvedBlock",
-              "type": "uint256"
-            },
-            {
-              "internalType": "bytes32",
-              "name": "settlementTx",
-              "type": "bytes32"
-            }
-          ],
-          "internalType": "struct IUmbra.Policy",
-          "name": "",
-          "type": "tuple"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "getPolicyCount",
-      "outputs": [
+          "internalType": "address",
+          "name": "viewer",
+          "type": "address"
+        },
         {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
+          "internalType": "bool",
+          "name": "allowCoverage",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowPremium",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowThreshold",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowDeductible",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowRatioValid",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowTrigger",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowPayout",
+          "type": "bool"
+        },
+        {
+          "internalType": "bool",
+          "name": "allowProximity",
+          "type": "bool"
         }
       ],
-      "stateMutability": "view",
+      "name": "grantViewerAccess",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -384,6 +877,50 @@
         }
       ],
       "name": "markSettled",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        }
+      ],
+      "name": "refreshProximityFromChainlink",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bool",
+          "name": "uphold",
+          "type": "bool"
+        }
+      ],
+      "name": "resolveDispute",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "policyId",
+          "type": "uint256"
+        }
+      ],
+      "name": "resolveWithChainlink",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

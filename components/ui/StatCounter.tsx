@@ -77,7 +77,7 @@ export function StatCounter({
 
   return (
     <div ref={elementRef} className={cn("text-center", className)}>
-      <div className="font-mono text-3xl md:text-4xl font-bold text-umbra-blue">
+      <div className="font-mono text-3xl md:text-4xl font-bold text-umbra-cyan">
         {prefix}
         {formattedValue}
         {suffix}

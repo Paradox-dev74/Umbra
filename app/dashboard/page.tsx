@@ -11,8 +11,12 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { PolicyTable } from "@/components/dashboard/PolicyTable";
+import { PrivatePortfolioCard } from "@/components/dashboard/PrivatePortfolioCard";
+import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { ORACLE_FEEDS } from "@/lib/constants";
 import { useUserPolicies } from "@/hooks/useUmbraContract";
+import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
+import { getOracleValueForFeed } from "@/lib/oracle-utils";
 import { formatAddress } from "@/lib/utils";
 import { Plus, Lock, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { PolicyStatus } from "@/lib/types";
@@ -20,6 +24,7 @@ import { PolicyStatus } from "@/lib/types";
 export default function DashboardPage() {
   const { address, isConnected } = useAccount();
   const { policies, isLoading, refetch } = useUserPolicies();
+  const chainlinkPrices = useChainlinkPrices();
 
   const displayAddress = isConnected && address ? formatAddress(address) : "—";
 
@@ -115,6 +120,32 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Private Portfolio + Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+          >
+            <PrivatePortfolioCard />
+          </motion.div>
+        </div>
+        <Card className="p-5 flex flex-col justify-center">
+          <p className="text-xs text-umbra-muted uppercase tracking-wider mb-2">FHE Privacy</p>
+          <p className="text-sm text-white/80 leading-relaxed">
+            Policy terms stay encrypted on-chain. Oracle values are public at resolution (parametric design); payout settlement uses sealed decrypt in your session.
+          </p>
+          <Link href="/dashboard/privacy" className="text-xs text-umbra-blue hover:underline mt-3">
+            Explore Privacy Lab →
+          </Link>
+        </Card>
+      </div>
+
+      <div className="mb-8">
+        <ActivityFeed />
+      </div>
+
       {/* Oracle Feeds Live Bar */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -130,17 +161,21 @@ export default function DashboardPage() {
           </div>
           <div className="overflow-hidden">
             <div className="flex animate-ticker whitespace-nowrap py-3 px-4">
-              {[...Object.values(ORACLE_FEEDS), ...Object.values(ORACLE_FEEDS)].map(
-                (feed, i) => (
+              {[
+                ...Object.entries(ORACLE_FEEDS),
+                ...Object.entries(ORACLE_FEEDS),
+              ].map(([key, feed], i) => {
+                const live = getOracleValueForFeed(key, chainlinkPrices);
+                return (
                   <div
-                    key={i}
+                    key={`${key}-${i}`}
                     className="inline-flex items-center gap-2 mx-6 shrink-0"
                   >
                     <span className="text-xs text-umbra-muted">
                       {feed.name}:
                     </span>
                     <span className="text-sm text-umbra-blue font-mono font-medium">
-                      {feed.currentValue.toLocaleString()}
+                      {live.value.toLocaleString()}
                     </span>
                     {feed.trend === "up" ? (
                       <TrendingUp className="w-3 h-3 text-umbra-success" />
@@ -149,10 +184,13 @@ export default function DashboardPage() {
                     ) : (
                       <span className="text-xs text-umbra-muted">→</span>
                     )}
+                    {live.source === "chainlink" && (
+                      <span className="text-[10px] text-umbra-success">●</span>
+                    )}
                     <span className="text-white/10 mx-4">|</span>
                   </div>
-                )
-              )}
+                );
+              })}
             </div>
           </div>
         </Card>

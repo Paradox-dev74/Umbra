@@ -237,7 +237,7 @@ export function TriggerProximityMonitor({
               thresholdHandle={boundHandle}
               operator={isLte ? "FHE.lte" : "FHE.gte"}
               bandPercent={12}
-              title={isBand ? "Index Band Monitor" : "Encrypted Sensitivity Band"}
+              title={isBand ? "Band Monitor (client demo)" : "Encrypted Sensitivity Band"}
             />
           ) : !proximity ? (
             <Button variant="outline" size="sm" onClick={analyze} disabled={loading || !clientReady}>

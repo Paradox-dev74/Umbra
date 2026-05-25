@@ -85,9 +85,12 @@ export interface CreatePolicyFormData {
   beneficiaryAddress: string;
   riskCategory: RiskCategory;
   policyReferenceName: string;
+  policyMode: "single" | "band";
   coverageAmountUsdc: string;
   triggerThreshold: string;
+  ceilingThreshold: string;
   premiumUsdc: string;
+  deductibleUsdc: string;
   coverageDurationDays: string;
   oracleFeed: string;
   resolutionMode: "automatic" | "manual";

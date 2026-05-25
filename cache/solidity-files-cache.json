@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "E:\\AKINDO\\Umbra\\contracts\\interfaces\\IUmbra.sol": {
-      "lastModificationDate": 1776819589413,
-      "contentHash": "ce5e07d5ec3fb16a8c9303d02b5ac1b9",
+      "lastModificationDate": 1780434707411,
+      "contentHash": "9de4b6c9eef83c49d0b37851dee63cfd",
       "sourceName": "contracts/interfaces/IUmbra.sol",
       "solcConfig": {
         "version": "0.8.29",
@@ -13,6 +13,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -51,6 +52,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -77,8 +79,8 @@
       ]
     },
     "E:\\AKINDO\\Umbra\\contracts\\UmbraInsurance.sol": {
-      "lastModificationDate": 1776819589413,
-      "contentHash": "bb13922883cb8a89f5a73c343005f2eb",
+      "lastModificationDate": 1780434724942,
+      "contentHash": "3afa381c338929cd8d023c22ec95782c",
       "sourceName": "contracts/UmbraInsurance.sol",
       "solcConfig": {
         "version": "0.8.29",
@@ -88,6 +90,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -106,7 +109,8 @@
       },
       "imports": [
         "@fhenixprotocol/cofhe-contracts/FHE.sol",
-        "./interfaces/IUmbra.sol"
+        "./interfaces/IUmbra.sol",
+        "./interfaces/Chainlink.sol"
       ],
       "versionPragmas": [
         "^0.8.25"
@@ -127,6 +131,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -175,6 +180,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -216,6 +222,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -255,6 +262,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -293,6 +301,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -331,6 +340,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -367,6 +377,7 @@
             "runs": 200
           },
           "evmVersion": "cancun",
+          "viaIR": true,
           "outputSelection": {
             "*": {
               "*": [
@@ -389,6 +400,43 @@
       ],
       "artifacts": [
         "Panic"
+      ]
+    },
+    "E:\\AKINDO\\Umbra\\contracts\\interfaces\\Chainlink.sol": {
+      "lastModificationDate": 1780414648975,
+      "contentHash": "a9670891d086caa43a27686b1322e92a",
+      "sourceName": "contracts/interfaces/Chainlink.sol",
+      "solcConfig": {
+        "version": "0.8.29",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "cancun",
+          "viaIR": true,
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.25"
+      ],
+      "artifacts": [
+        "AggregatorV3Interface"
       ]
     }
   }

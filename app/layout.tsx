@@ -3,16 +3,10 @@
    ═══════════════════════════════════════════════════════════ */
 
 import type { Metadata } from "next";
-import nextDynamic from "next/dynamic";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
-// Disable static generation for all pages — @cofhe/sdk, wagmi, and WalletConnect
-// access window/indexedDB at module load time and crash during SSR/prerender.
 export const dynamic = "force-dynamic";
-
-const Providers = nextDynamic(() => import("@/components/Providers").then((m) => m.Providers), {
-  ssr: false,
-});
 
 export const metadata: Metadata = {
   title: "Umbra Protocol — Invisible Risk Coverage",

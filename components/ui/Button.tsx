@@ -1,14 +1,10 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Design System Button
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { forwardRef } from "react";
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "ghost" | "danger" | "outline";
+type ButtonVariant = "primary" | "ghost" | "danger" | "outline" | "violet";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
@@ -21,13 +17,15 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref"> {
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary:
-    "bg-umbra-blue text-white hover:shadow-[0_0_30px_rgba(59,130,246,0.4)]",
+    "bg-gradient-to-r from-umbra-cyan to-umbra-cyan-dim text-umbra-bg font-semibold hover:shadow-[0_0_40px_rgba(34,211,238,0.35)]",
   ghost:
-    "bg-transparent border border-white/20 text-white hover:bg-white/5",
+    "bg-white/[0.03] border border-white/10 text-white hover:bg-white/[0.06] hover:border-white/20",
   danger:
     "bg-umbra-danger/10 border border-umbra-danger/30 text-umbra-danger hover:bg-umbra-danger/20",
   outline:
-    "bg-transparent border border-umbra-blue/30 text-umbra-blue hover:bg-umbra-blue/10",
+    "bg-transparent border border-umbra-cyan/40 text-umbra-cyan hover:bg-umbra-cyan/10",
+  violet:
+    "bg-gradient-to-r from-umbra-violet-dim to-umbra-violet text-white hover:shadow-[0_0_32px_rgba(167,139,250,0.3)]",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -52,21 +50,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <motion.button
         ref={ref}
-        whileHover={{ scale: 1.04 }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ duration: 0.2 }}
+        whileHover={{ scale: 1.03, y: -1 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 22 }}
         className={cn(
-          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 cursor-pointer",
-          "focus:outline-none focus:ring-2 focus:ring-umbra-blue/50 focus:ring-offset-2 focus:ring-offset-umbra-bg",
+          "relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 cursor-pointer overflow-hidden",
+          "focus:outline-none focus:ring-2 focus:ring-umbra-cyan/40 focus:ring-offset-2 focus:ring-offset-umbra-bg",
           "disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none",
           variantStyles[variant],
           sizeStyles[size],
-          pill ? "rounded-full" : "rounded-lg",
-          glow && variant === "primary" && "shadow-blue-glow-sm",
+          pill ? "rounded-full" : "rounded-xl",
+          glow && variant === "primary" && "shadow-cyan-glow-sm",
           className
         )}
         {...props}
       >
+        {variant === "primary" && (
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer pointer-events-none" />
+        )}
         {children}
       </motion.button>
     );

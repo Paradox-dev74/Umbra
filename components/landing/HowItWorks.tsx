@@ -1,122 +1,86 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — How It Works Section
-   3 step cards + FHE Oracle Graph
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { LandingSection } from "./LandingSection";
 import { FHEOracleGraph } from "./FHEOracleGraph";
 import { Lock, Satellite, ShieldCheck } from "lucide-react";
 
 const steps = [
   {
     icon: Lock,
+    step: "01",
     title: "Encrypt Policy Terms",
-    body: "Your enterprise uses the Fhenix SDK to define coverage. The trigger threshold (e.g., a shipping index value) is stored as euint32. The coverage payout is stored as euint64. Zero plaintext ever touches the blockchain.",
-    tech: "Fhenix FHE · euint32 · euint64",
-    accentColor: "bg-umbra-blue",
-    iconColor: "text-umbra-blue",
-    glowColor: "shadow-blue-glow-sm",
+    body: "Coverage, premium, threshold, and deductible are encrypted client-side via CoFHE before a single byte hits the chain.",
+    tech: "Encryptable.uint64 · createPolicyV2",
+    accent: "border-l-umbra-cyan",
+    iconBg: "bg-umbra-cyan/10 text-umbra-cyan",
   },
   {
     icon: Satellite,
-    title: "Homomorphic Oracle Evaluation",
-    body: "Chainlink pushes the latest risk index on-chain. Our contract uses FHE.gte() to compare the PUBLIC oracle value against your HIDDEN threshold homomorphically. Node operators see the oracle value — but never your strike price. The result remains an encrypted ebool.",
-    tech: "FHE.gte · ebool · Chainlink",
-    accentColor: "bg-umbra-violet",
-    iconColor: "text-umbra-violet",
-    glowColor: "shadow-violet-glow",
+    step: "02",
+    title: "Homomorphic Oracle Compare",
+    body: "Chainlink feeds post public oracle values. Your contract runs FHE.gte / FHE.lte against your hidden threshold — strike price never revealed.",
+    tech: "FHE.gte · resolveWithChainlink",
+    accent: "border-l-umbra-violet",
+    iconBg: "bg-umbra-violet/10 text-umbra-violet",
   },
   {
     icon: ShieldCheck,
-    title: "Silent Treasury Settlement",
-    body: "FHE.select routes the settlement conditionally without public branching. Upon trigger confirmation, Privara's settlement engine executes a confidential stablecoin transfer to your enterprise treasury. The payout amount and counterparty remain indistinguishable to external observers.",
-    tech: "FHE.select · Privara · Confidential USDC",
-    accentColor: "bg-umbra-success",
-    iconColor: "text-umbra-success",
-    glowColor: "shadow-[0_0_30px_rgba(16,185,129,0.15)]",
+    step: "03",
+    title: "Silent Settlement",
+    body: "FHE.select routes payout without public branching. Privara executes confidential USDC transfer — amount and counterparty stay private.",
+    tech: "FHE.select · FHE.and · Privara",
+    accent: "border-l-umbra-success",
+    iconBg: "bg-umbra-success/10 text-umbra-success",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="w-full bg-umbra-bg py-24">
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Section Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-4xl md:text-5xl font-extrabold">
-            <span className="text-white">How Umbra </span>
-            <span className="text-umbra-blue">Protects </span>
-            <span className="text-white">Your Risk</span>
-          </h2>
-        </motion.div>
-
-        {/* 3 Step Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {steps.map((step, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{
-                delay: i * 0.1,
-                duration: 0.5,
-                type: "spring",
-                stiffness: 100,
-              }}
-            >
-              <Card className="relative h-full overflow-hidden" glow>
-                {/* Left accent bar */}
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 ${step.accentColor}`}
-                />
-
-                <div className="p-6 pl-8">
-                  {/* Icon */}
-                  <div
-                    className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 ${step.glowColor}`}
-                  >
-                    <step.icon className={`w-6 h-6 ${step.iconColor}`} />
+    <LandingSection
+      id="how-it-works"
+      className="bg-umbra-bg umbra-hex-grid"
+      eyebrow="Protocol Flow"
+      title={
+        <>
+          <span className="text-white">Three steps. </span>
+          <span className="bg-gradient-to-r from-umbra-cyan to-umbra-violet bg-clip-text text-transparent">
+            Total privacy.
+          </span>
+        </>
+      }
+      subtitle="From encrypted policy creation to homomorphic resolution — every financial parameter stays sealed until you choose to decrypt."
+    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-20">
+        {steps.map((step, i) => (
+          <motion.div
+            key={step.step}
+            initial={{ opacity: 0, y: 32 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Card glass hover className={`h-full border-l-4 ${step.accent} overflow-hidden`}>
+              <div className="p-7">
+                <div className="flex items-center justify-between mb-5">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${step.iconBg}`}>
+                    <step.icon className="w-6 h-6" />
                   </div>
-
-                  {/* Step number */}
-                  <div className="text-xs text-umbra-muted mb-2 font-mono">
-                    STEP {i + 1}
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-xl font-bold text-white mb-3">
-                    {step.title}
-                  </h3>
-
-                  {/* Body */}
-                  <p className="text-umbra-muted text-sm leading-relaxed mb-4">
-                    {step.body}
-                  </p>
-
-                  {/* Tech pill */}
-                  <Badge variant="info" className="font-mono text-[10px]">
-                    {step.tech}
-                  </Badge>
+                  <span className="text-3xl font-extrabold text-white/5 font-mono">{step.step}</span>
                 </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* FHE Oracle Graph */}
-        <FHEOracleGraph />
+                <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
+                <p className="text-umbra-muted text-sm leading-relaxed mb-5">{step.body}</p>
+                <Badge variant="info" className="font-mono text-[10px]">
+                  {step.tech}
+                </Badge>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
       </div>
-    </section>
+      <FHEOracleGraph />
+    </LandingSection>
   );
 }

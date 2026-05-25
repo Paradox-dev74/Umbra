@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "compile:contracts": "hardhat compile --config hardhat.config.cjs",
+    "export:abi": "node scripts/export-abi.cjs",
+    "deploy:sepolia": "node scripts/deploy.cjs",
+    "test:contracts": "hardhat test --config hardhat.config.cjs"
   },
   "dependencies": {
     "@cofhe/abi": "^0.4.0",
