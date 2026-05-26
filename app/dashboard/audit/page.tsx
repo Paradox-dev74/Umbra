@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { setPermit, formatPermitExpiry } from "@/lib/permits";
 import { permitStore } from "@/lib/permits";
-import { useChainId } from "wagmi";
-import { formatPermitExpiry } from "@/lib/permits";
 import { Eye, KeyRound } from "lucide-react";
+import { toast } from "sonner";
 
 export default function AuditPortalPage() {
   const { address } = useAccount();
@@ -68,11 +68,27 @@ export default function AuditPortalPage() {
               placeholder='Paste permit JSON from holder…'
               className="w-full mt-2 h-24 bg-umbra-bg border border-white/10 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-umbra-cyan/40"
             />
-            <Button variant="outline" size="sm" className="mt-2" disabled>
-              Import (use holder ACL grant + sealed decrypt on policy detail)
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2"
+              disabled={!importJson.trim()}
+              onClick={() => {
+                try {
+                  if (!address) return;
+                  const parsed = JSON.parse(importJson);
+                  setPermit(chainId, address, parsed);
+                  setImportJson("");
+                  toast.success("Permit imported to local store");
+                } catch {
+                  toast.error("Invalid permit JSON — check the payload from the holder");
+                }
+              }}
+            >
+              Import permit
             </Button>
             <p className="text-[10px] text-umbra-muted mt-2">
-              Full permit import signing requires wallet EIP-712 — use policy ACL grants for demo audits.
+              Paste JSON shared by a policy holder. On-chain ACL via grantViewerAccess is still required for sealed decrypt.
             </p>
           </div>
         </CardBody>

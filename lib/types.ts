@@ -58,9 +58,7 @@ export interface OracleFeed {
   name: string;
   address: string;
   unit: string;
-  currentValue: number;
   lastUpdated: number;
-  trend: "up" | "down" | "stable";
 }
 
 export interface OracleReading {

@@ -34,7 +34,7 @@ import {
 } from "@/hooks/useUmbraContract";
 import { useAccount, useBlockNumber } from "wagmi";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
-import { getOracleValueForFeed, resolveFeedKeyFromAddress } from "@/lib/oracle-utils";
+import { getOracleValueForFeed, resolveFeedKeyFromAddress, formatOraclePrice } from "@/lib/oracle-utils";
 import { isAddress } from "viem";
 import { toast } from "sonner";
 import {
@@ -509,12 +509,11 @@ export default function PolicyDetailPage() {
               {oracleFeed && (
                 <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]">
                   <span className="text-xs text-umbra-muted">
-                    {liveOracle?.source === "chainlink" ? "Live Value" : "Reference Value"}
+                    {liveOracle?.source === "chainlink" ? "Live Chainlink" : "Feed status"}
                   </span>
                   <span className="text-sm text-white font-mono flex items-center gap-1">
-                    {(liveOracle?.value ?? oracleFeed.currentValue).toLocaleString()}{" "}
-                    <span className="text-umbra-muted text-xs">{oracleFeed.unit}</span>
-                    {oracleFeed.trend === "up" && (
+                    {formatOraclePrice(liveOracle?.value ?? null, oracleFeed.unit)}{" "}
+                    {liveOracle?.source === "chainlink" && (
                       <TrendingUp className="w-3 h-3 text-umbra-success" />
                     )}
                   </span>

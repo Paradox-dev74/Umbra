@@ -50,71 +50,55 @@ export const FHENIX_HELIUM_CHAIN = defineChain({
   testnet: true,
 });
 
-export const ORACLE_FEEDS: Record<
-  string,
-  {
-    name: string;
-    /** On-chain feed address (Chainlink AggregatorV3 on Sepolia for real feeds) */
-    address: string;
-    /** Set when there is a real Chainlink AggregatorV3 address to query */
-    chainlinkAddress?: string;
-    unit: string;
-    /** Fallback / initial display value */
-    currentValue: number;
-    trend: "up" | "down" | "stable";
-    /** True for feeds that have no real on-chain data (testnet only) */
-    simulated?: boolean;
-  }
-> = {
+export type OracleFeedConfig = {
+  name: string;
+  /** On-chain feed address (Chainlink AggregatorV3 on Sepolia) */
+  address: string;
+  chainlinkAddress: string;
+  unit: string;
+};
+
+export const ORACLE_FEEDS: Record<string, OracleFeedConfig> = {
   ETH_USD: {
     name: "ETH / USD",
     address: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     chainlinkAddress: "0x694AA1769357215DE4FAC081bf1f309aDC325306",
     unit: "USD",
-    currentValue: 3200,
-    trend: "up",
   },
   BTC_USD: {
     name: "BTC / USD",
     address: "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43",
     chainlinkAddress: "0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43",
     unit: "USD",
-    currentValue: 65000,
-    trend: "up",
   },
   LINK_USD: {
     name: "LINK / USD",
     address: "0xc59E3633BAAC79493d908e63626716e204a45EdF",
     chainlinkAddress: "0xc59E3633BAAC79493d908e63626716e204a45EdF",
     unit: "USD",
-    currentValue: 14.5,
-    trend: "stable",
   },
   USDC_USD: {
     name: "USDC / USD",
     address: "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
     chainlinkAddress: "0xA2F78ab2355fe2f984D808B5CeE7FD0A93D5270E",
     unit: "USD",
-    currentValue: 1.0001,
-    trend: "stable",
-  },
-  BALTIC_DRY: {
-    name: "Baltic Dry Index",
-    address: "0x0000000000000000000000000000000000000000",
-    unit: "BDI Points",
-    currentValue: 1247,
-    trend: "up",
-    simulated: true,
-  },
-  SHIPPING_FBX: {
-    name: "Freightos FBX",
-    address: "0x0000000000000000000000000000000000000000",
-    unit: "USD/FEU",
-    currentValue: 284,
-    trend: "down",
-    simulated: true,
   },
 };
+
+/** Default Chainlink feed per risk category when creating a policy */
+export const RISK_CATEGORY_DEFAULT_FEED: Record<number, keyof typeof ORACLE_FEEDS> = {
+  0: "ETH_USD",
+  1: "BTC_USD",
+  2: "LINK_USD",
+  3: "LINK_USD",
+  4: "USDC_USD",
+};
+
+export function isLiveOracleFeed(key: string): boolean {
+  return key in ORACLE_FEEDS;
+}
+
+export const LIVE_ORACLE_FEED_KEYS = Object.keys(ORACLE_FEEDS);
 
 export const RISK_CATEGORIES = [
   {
@@ -122,45 +106,45 @@ export const RISK_CATEGORIES = [
     value: 0,
     label: "Supply Chain Delay",
     icon: "🚢",
-    oracle: "Baltic Dry Index",
+    oracle: "Chainlink ETH/USD",
     fheOperator: "FHE.gte",
-    description: "Coverage for logistics and shipping delay indices exceeding your hidden threshold.",
+    description: "Parametric coverage when ETH/USD crosses your encrypted threshold (testnet proxy for logistics indices).",
   },
   {
     id: "COMMODITY",
     value: 1,
     label: "Commodity Price",
     icon: "📊",
-    oracle: "Chainlink Price Feed",
+    oracle: "Chainlink BTC/USD",
     fheOperator: "FHE.lte",
-    description: "Protection against commodity price drops below your encrypted strike price.",
+    description: "Protection against BTC price drops below your encrypted strike price.",
   },
   {
     id: "WEATHER",
     value: 2,
     label: "Weather Index",
     icon: "🌡️",
-    oracle: "AccuWeather API",
+    oracle: "Chainlink LINK/USD",
     fheOperator: "FHE.gte",
-    description: "Parametric coverage tied to temperature and precipitation risk indices.",
+    description: "Parametric coverage tied to LINK/USD index movement on Sepolia testnet.",
   },
   {
     id: "SHIPPING",
     value: 3,
     label: "Shipping Cost",
     icon: "📦",
-    oracle: "Freightos FBX",
+    oracle: "Chainlink LINK/USD",
     fheOperator: "FHE.gte",
-    description: "Freight rate spike protection using global container shipping indices.",
+    description: "Freight-rate spike protection using LINK/USD as the on-chain parametric feed.",
   },
   {
     id: "CURRENCY",
     value: 4,
     label: "Currency Volatility",
     icon: "💱",
-    oracle: "Chainlink FX Feed",
+    oracle: "Chainlink USDC/USD",
     fheOperator: "FHE.gte",
-    description: "FX volatility coverage for cross-border enterprise treasury operations.",
+    description: "FX peg deviation coverage using the USDC/USD Chainlink feed.",
   },
 ];
 
@@ -205,62 +189,3 @@ export const POLICY_STATUS_CONFIG: Record<
     bgColor: "bg-gray-600/10",
   },
 };
-
-export const DEMO_POLICIES = [
-  {
-    id: BigInt(1),
-    enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
-    beneficiary: "0xDEF0000000000000000000000000000000005678" as `0x${string}`,
-    riskCategory: 0,
-    status: 0,
-    oracleFeed: "0x1111000000000000000000000000000000000001" as `0x${string}`,
-    createdAt: BigInt(Math.floor(Date.now() / 1000) - 86400 * 3),
-    policyReferenceHash: "0xa1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2" as `0x${string}`,
-    coverageAmount: 2400000,
-    triggerThreshold: 1200,
-    premium: 48000,
-    expiryBlock: 9999999,
-  },
-  {
-    id: BigInt(2),
-    enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
-    beneficiary: "0x9876000000000000000000000000000000005432" as `0x${string}`,
-    riskCategory: 2,
-    status: 1,
-    oracleFeed: "0x1111000000000000000000000000000000000003" as `0x${string}`,
-    createdAt: BigInt(Math.floor(Date.now() / 1000) - 86400 * 7),
-    policyReferenceHash: "0xf6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5d4c3b2a1f6e5" as `0x${string}`,
-    coverageAmount: 5000000,
-    triggerThreshold: 847,
-    premium: 95000,
-    expiryBlock: 9999999,
-  },
-  {
-    id: BigInt(3),
-    enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
-    beneficiary: "0xBBBB000000000000000000000000000000003333" as `0x${string}`,
-    riskCategory: 3,
-    status: 2,
-    oracleFeed: "0x1111000000000000000000000000000000000002" as `0x${string}`,
-    createdAt: BigInt(Math.floor(Date.now() / 1000) - 86400 * 14),
-    policyReferenceHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef" as `0x${string}`,
-    coverageAmount: 1200000,
-    triggerThreshold: 300,
-    premium: 24000,
-    expiryBlock: 8888888,
-  },
-  {
-    id: BigInt(4),
-    enterprise: "0xABcD000000000000000000000000000000001234" as `0x${string}`,
-    beneficiary: "0xCCCC000000000000000000000000000000004444" as `0x${string}`,
-    riskCategory: 4,
-    status: 3,
-    oracleFeed: "0x1111000000000000000000000000000000000005" as `0x${string}`,
-    createdAt: BigInt(Math.floor(Date.now() / 1000) - 86400 * 30),
-    policyReferenceHash: "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef" as `0x${string}`,
-    coverageAmount: 800000,
-    triggerThreshold: 3500,
-    premium: 16000,
-    expiryBlock: 7777777,
-  },
-];

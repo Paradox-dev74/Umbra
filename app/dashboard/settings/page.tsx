@@ -11,7 +11,6 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { UMBRA_CONTRACT_ADDRESS, UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
 import { formatAddress } from "@/lib/utils";
 import { Settings, Shield, ExternalLink, Copy } from "lucide-react";
-import { CofheStatusBanner } from "@/components/dashboard/CofheStatusBanner";
 import { ContractAdminPanel } from "@/components/dashboard/ContractAdminPanel";
 import { useFhenix } from "@/hooks/useFhenix";
 import { useMaxPremiumRatioDivisor } from "@/hooks/usePrivacyFeatures";
@@ -40,9 +39,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-4">
-        <CofheStatusBanner />
-
-        {/* Wallet */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
           <Card>
             <CardHeader>

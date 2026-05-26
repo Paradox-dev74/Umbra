@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/Badge";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
 import { useResolveWithOracle } from "@/hooks/useUmbraContract";
 import { useResolveWithChainlink, useOracleMaxStaleness } from "@/hooks/usePrivacyFeatures";
-import { findFeedByAddress, getOracleValueForFeed, oracleValueToUint64, resolveFeedKeyFromAddress } from "@/lib/oracle-utils";
+import { findFeedByAddress, getOracleValueForFeed, oracleValueToUint64, resolveFeedKeyFromAddress, formatOraclePrice } from "@/lib/oracle-utils";
 import { UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
@@ -47,18 +47,18 @@ export function OracleProofForm({
   );
   const feedKey = feedEntry?.[0];
   const feed = feedEntry?.[1];
-  const hasOnChainFeed = !!(feed?.chainlinkAddress && !feed?.simulated);
+  const hasOnChainFeed = !!feed?.chainlinkAddress;
 
   const liveData = feedKey ? getOracleValueForFeed(feedKey, chainlinkPrices) : null;
   const chainlinkMeta = feedKey ? chainlinkPrices[feedKey] : null;
-  const defaultValue = liveData?.value ?? feed?.currentValue ?? 0;
+  const defaultValue = liveData?.value ?? null;
 
   const [oracleValue, setOracleValue] = useState("");
   const [stage, setStage] = useState<ResolutionStage>("idle");
   const [txHash, setTxHash] = useState<string | null>(null);
   const [usedChainlink, setUsedChainlink] = useState(false);
 
-  const displayValue = oracleValue || String(defaultValue);
+  const displayValue = oracleValue || (defaultValue !== null ? String(defaultValue) : "");
   const operator = riskCategory === 1 ? "FHE.lte" : "FHE.gte";
   const isPending = manualPending || chainlinkPending;
 
@@ -165,9 +165,9 @@ export function OracleProofForm({
                   <Link2 className="w-3.5 h-3.5" />
                   Recommended: contract reads Chainlink directly — threshold stays encrypted
                 </p>
-                {liveData && (
+                {liveData?.value != null && (
                   <p className="text-xs text-umbra-muted">
-                    Live preview: {liveData.value.toLocaleString()} {feed?.unit}
+                    Live preview: {formatOraclePrice(liveData.value, feed?.unit ?? "USD")}
                     {feedAgeSec !== null && (
                       <span className={isFeedStale ? " text-umbra-warning" : " text-umbra-success"}>
                         {" "}· updated {feedAgeSec}s ago

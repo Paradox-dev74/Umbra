@@ -13,12 +13,12 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
-import { RISK_CATEGORIES, ORACLE_FEEDS, UMBRA_CONTRACT_ADDRESS, UMBRA_V3_FEATURES, PolicyMode } from "@/lib/constants";
+import { RISK_CATEGORIES, ORACLE_FEEDS, UMBRA_CONTRACT_ADDRESS, UMBRA_V3_FEATURES, PolicyMode, RISK_CATEGORY_DEFAULT_FEED } from "@/lib/constants";
 import { UMBRA_ABI } from "@/lib/abi";
 import { asInEuint64 } from "@/lib/fhenix";
 import { useFhenix } from "@/hooks/useFhenix";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
-import { getOracleValueForFeed, thresholdToUint64 } from "@/lib/oracle-utils";
+import { getOracleValueForFeed, thresholdToUint64, formatOraclePrice } from "@/lib/oracle-utils";
 import type { CreatePolicyFormData, FormStep } from "@/lib/types";
 import { generatePolicyHash } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,7 +52,7 @@ const defaultForm: CreatePolicyFormData = {
   premiumUsdc: "",
   deductibleUsdc: "0",
   coverageDurationDays: "",
-  oracleFeed: "BALTIC_DRY",
+  oracleFeed: "ETH_USD",
   resolutionMode: "automatic",
   resolverAddress: "",
 };
@@ -88,7 +88,14 @@ export function CreatePolicyForm() {
 
   const updateForm = useCallback(
     (field: keyof CreatePolicyFormData, value: string | number) => {
-      setForm((prev) => ({ ...prev, [field]: value }));
+      setForm((prev) => {
+        const next = { ...prev, [field]: value };
+        if (field === "riskCategory" && typeof value === "number") {
+          const defaultFeed = RISK_CATEGORY_DEFAULT_FEED[value];
+          if (defaultFeed) next.oracleFeed = defaultFeed;
+        }
+        return next;
+      });
     },
     []
   );
@@ -324,7 +331,12 @@ export function CreatePolicyForm() {
           </a>
         )}
         <p className="text-xs text-umbra-muted font-mono mb-8">
-          Policy Hash: {generatePolicyHash({ name: form.policyReferenceName, enterprise: "0xdemo", timestamp: Date.now() })}
+          Policy Hash:{" "}
+          {generatePolicyHash({
+            name: form.policyReferenceName,
+            enterprise: connectedAddress ?? form.beneficiaryAddress,
+            timestamp: Date.now(),
+          })}
         </p>
         <Button
           variant="primary"
@@ -635,10 +647,10 @@ export function CreatePolicyForm() {
                   <div className="space-y-2">
                     {Object.entries(ORACLE_FEEDS).map(([key, feed]) => {
                       const live = getOracleValueForFeed(key, chainlinkPrices);
-                      const displayPrice = live.value.toLocaleString();
                       return (
                       <button
                         key={key}
+                        type="button"
                         onClick={() => updateForm("oracleFeed", key)}
                         className={`w-full flex items-center justify-between p-4 rounded-lg border transition-all text-left ${
                           form.oracleFeed === key
@@ -651,12 +663,12 @@ export function CreatePolicyForm() {
                             {feed.name}
                           </p>
                           <p className="text-xs text-umbra-muted font-mono">
-                            {feed.address.slice(0, 20)}...
+                            {feed.address.slice(0, 10)}…{feed.address.slice(-6)}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm text-umbra-blue font-mono">
-                            {displayPrice}
+                          <p className={`text-sm font-mono ${live.value !== null ? "text-umbra-blue" : "text-umbra-muted"}`}>
+                            {formatOraclePrice(live.value, feed.unit)}
                           </p>
                           <p className="text-xs text-umbra-muted">
                             {feed.unit}

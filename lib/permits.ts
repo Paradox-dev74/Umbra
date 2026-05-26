@@ -62,4 +62,4 @@ export function formatPermitExpiry(expiration: number): string {
   return `${mins}m remaining`;
 }
 
-export { ValidationUtils, PermitUtils, permitStore };
+export { ValidationUtils, PermitUtils, permitStore, setPermit };

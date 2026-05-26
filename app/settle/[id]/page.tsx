@@ -25,6 +25,7 @@ import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
 import {
   getOracleValueForFeed,
   resolveFeedKeyFromAddress,
+  formatOraclePrice,
 } from "@/lib/oracle-utils";
 import { toast } from "sonner";
 import {
@@ -242,9 +243,9 @@ export default function SettlementPage() {
           title="Oracle Proof"
           subtitle={oracleFeed?.name ?? "Feed"}
           value={
-            liveOracle
-              ? `${liveOracle.value.toLocaleString()} ${oracleFeed?.unit ?? ""}`
-              : `${oracleFeed?.currentValue.toLocaleString() ?? "?"} ${oracleFeed?.unit ?? ""}`
+            liveOracle?.value !== null && liveOracle?.value !== undefined
+              ? `${formatOraclePrice(liveOracle.value, oracleFeed?.unit ?? "USD")}`
+              : "Awaiting Chainlink…"
           }
           active={false}
           done={policy.status >= 1}

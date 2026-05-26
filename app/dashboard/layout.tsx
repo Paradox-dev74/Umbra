@@ -23,19 +23,40 @@ import {
   Globe,
   Eye,
   Scale,
+  type LucideIcon,
 } from "lucide-react";
 
-const navItems = [
-  { icon: LayoutGrid, label: "Dashboard", href: "/dashboard", exact: true },
-  { icon: Shield, label: "My Policies", href: "/dashboard/policies", exact: false },
-  { icon: Plus, label: "Create Policy", href: "/dashboard/create", exact: false },
-  { icon: FlaskConical, label: "Privacy Lab", href: "/dashboard/privacy", exact: false },
-  { icon: Radio, label: "Oracle Ops", href: "/dashboard/oracle/ops", exact: false },
-  { icon: Zap, label: "Oracle Feeds", href: "/dashboard/oracle", exact: false },
-  { icon: Globe, label: "Reinsurance", href: "/dashboard/reinsurance", exact: false },
-  { icon: Eye, label: "Audit Portal", href: "/dashboard/audit", exact: false },
-  { icon: Scale, label: "Arbitrator", href: "/dashboard/arbitrator", exact: false },
-  { icon: Settings, label: "Settings", href: "/dashboard/settings", exact: false },
+type NavItem = {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  exact?: boolean;
+};
+
+const navSections: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Policyholder",
+    items: [
+      { icon: LayoutGrid, label: "Overview", href: "/dashboard", exact: true },
+      { icon: Shield, label: "My Policies", href: "/dashboard/policies" },
+      { icon: Plus, label: "Create Policy", href: "/dashboard/create" },
+      { icon: FlaskConical, label: "Privacy Lab", href: "/dashboard/privacy" },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { icon: Radio, label: "Oracle Feeds", href: "/dashboard/oracle" },
+      { icon: Zap, label: "Oracle Ops", href: "/dashboard/oracle/ops" },
+      { icon: Globe, label: "Reinsurance", href: "/dashboard/reinsurance" },
+      { icon: Eye, label: "Audit Portal", href: "/dashboard/audit" },
+      { icon: Scale, label: "Arbitrator", href: "/dashboard/arbitrator" },
+    ],
+  },
+  {
+    title: "System",
+    items: [{ icon: Settings, label: "Settings", href: "/dashboard/settings" }],
+  },
 ];
 
 function SidebarContent({
@@ -57,31 +78,42 @@ function SidebarContent({
         </Link>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={onNavClick}
-              className={cn(
-                "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors",
-                isActive ? "text-umbra-cyan" : "text-umbra-muted hover:text-white"
-              )}
-            >
-              {isActive && (
-                <motion.span
-                  layoutId="sidebar-active"
-                  className="absolute inset-0 rounded-xl bg-umbra-cyan/10 border border-umbra-cyan/20"
-                  transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                />
-              )}
-              <item.icon className="w-4 h-4 relative z-10" />
-              <span className="relative z-10">{item.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
+        {navSections.map((section) => (
+          <div key={section.title}>
+            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-umbra-muted/70">
+              {section.title}
+            </p>
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
+                const isActive = item.exact
+                  ? pathname === item.href
+                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavClick}
+                    className={cn(
+                      "relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors",
+                      isActive ? "text-umbra-cyan" : "text-umbra-muted hover:text-white hover:bg-white/[0.03]"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="sidebar-active"
+                        className="absolute inset-0 rounded-xl bg-umbra-cyan/10 border border-umbra-cyan/20"
+                        transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      />
+                    )}
+                    <item.icon className="w-4 h-4 relative z-10 shrink-0" />
+                    <span className="relative z-10 truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       <div className="px-4 py-4 border-t border-white/[0.06]">
@@ -94,7 +126,7 @@ function SidebarContent({
                 onClick={openAccountModal}
                 className="flex items-center gap-2 w-full hover:bg-white/5 rounded-xl p-2 transition-colors border border-transparent hover:border-white/10"
               >
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-umbra-cyan/20 to-umbra-violet/20 flex items-center justify-center ring-1 ring-white/10">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-umbra-cyan/20 to-umbra-violet/20 flex items-center justify-center ring-1 ring-white/10 shrink-0">
                   <span className="text-[10px] font-mono text-umbra-cyan">FHE</span>
                 </div>
                 <div className="flex-1 min-w-0 text-left">
@@ -135,7 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="relative flex min-h-screen bg-umbra-bg">
       <MeshBackground intensity="subtle" className="fixed inset-0" />
 
-      <aside className="hidden lg:flex flex-col w-[268px] border-r border-white/[0.06] glass-dark relative z-10">
+      <aside className="hidden lg:flex flex-col w-[268px] border-r border-white/[0.06] glass-dark relative z-10 shrink-0">
         <SidebarContent pathname={pathname} address={address} isConnected={isConnected} />
       </aside>
 
@@ -176,7 +208,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
       </AnimatePresence>
 
-      <main className="flex-1 overflow-y-auto relative z-10">
+      <main className="flex-1 overflow-y-auto relative z-10 min-w-0">
         <div className="lg:hidden flex items-center justify-between px-4 h-14 border-b border-white/[0.06] glass-dark sticky top-0 z-30">
           <button
             onClick={() => setMobileOpen(true)}
@@ -194,14 +226,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <AnimatePresence mode="wait">
           <motion.div
             key={pathname}
-            initial={{ opacity: 0, y: 16, filter: "blur(4px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -8, filter: "blur(2px)" }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="min-h-screen"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="min-h-screen pb-12"
           >
             <div className="px-4 md:px-8 pt-4 md:pt-6 max-w-7xl mx-auto">
-              <CofheStatusBanner />
+              <CofheStatusBanner className="mb-6" />
             </div>
             {children}
           </motion.div>

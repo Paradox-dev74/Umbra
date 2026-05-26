@@ -26,6 +26,7 @@ interface PolicyTableProps {
     settlementTx: `0x${string}`;
   }>;
   isLoading?: boolean;
+  compact?: boolean;
 }
 
 function SkeletonRows() {
@@ -47,7 +48,7 @@ function SkeletonRows() {
   );
 }
 
-export function PolicyTable({ policies, isLoading }: PolicyTableProps) {
+export function PolicyTable({ policies, isLoading, compact }: PolicyTableProps) {
   if (!isLoading && policies.length === 0) {
     return (
       <div className="text-center py-20">
@@ -99,9 +100,11 @@ export function PolicyTable({ policies, isLoading }: PolicyTableProps) {
             <th className="text-left text-xs text-umbra-muted font-medium py-3 px-4">
               Oracle Feed
             </th>
-            <th className="text-left text-xs text-umbra-muted font-medium py-3 px-4">
-              Created Block
-            </th>
+            {!compact && (
+              <th className="text-left text-xs text-umbra-muted font-medium py-3 px-4">
+                Created Block
+              </th>
+            )}
             <th className="text-right text-xs text-umbra-muted font-medium py-3 px-4">
               Actions
             </th>
@@ -161,11 +164,13 @@ export function PolicyTable({ policies, isLoading }: PolicyTableProps) {
                     {getOracleName(policy.oracleFeed)}
                   </span>
                 </td>
-                <td className="py-4 px-4">
-                  <span className="text-sm text-umbra-muted font-mono">
-                    #{Number(policy.createdBlock)}
-                  </span>
-                </td>
+                {!compact && (
+                  <td className="py-4 px-4">
+                    <span className="text-sm text-umbra-muted font-mono">
+                      #{Number(policy.createdBlock)}
+                    </span>
+                  </td>
+                )}
                 <td className="py-4 px-4 text-right">
                   <Link
                     href={`/dashboard/policy/${Number(policy.id)}`}

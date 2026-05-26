@@ -10,7 +10,7 @@ import { useResolveWithChainlink } from "@/hooks/usePrivacyFeatures";
 import { useRefreshProximityFromChainlink } from "@/hooks/usePrivacyFeatures";
 import { UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
 import { ORACLE_FEEDS } from "@/lib/constants";
-import { resolveFeedKeyFromAddress, getOracleValueForFeed } from "@/lib/oracle-utils";
+import { resolveFeedKeyFromAddress, getOracleValueForFeed, formatOraclePrice } from "@/lib/oracle-utils";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
 import { formatAddress } from "@/lib/utils";
 import { toast } from "sonner";
@@ -104,9 +104,9 @@ export default function OracleOpsPage() {
                     <p className="text-xs text-umbra-muted mt-1">
                       {feed?.name ?? "Unknown feed"} · holder {formatAddress(p.holder, 4)}
                     </p>
-                    {live && (
+                    {live?.value != null && (
                       <p className="text-xs text-umbra-cyan font-mono mt-1">
-                        Live: {live.value.toLocaleString()} {feed?.unit}
+                        Live: {formatOraclePrice(live.value, feed?.unit ?? "USD")}
                       </p>
                     )}
                   </div>
