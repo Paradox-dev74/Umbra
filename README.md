@@ -1,27 +1,32 @@
 # Umbra Protocol
 
-**Confidential Parametric Insurance — Fhenix FHE × Chainlink × Privara**
+**Confidential parametric insurance on Ethereum Sepolia — CoFHE encryption, Chainlink resolution, Privara settlement.**
 
-> On-chain parametric insurance where coverage amounts, premiums, and trigger thresholds remain fully encrypted using Fhenix Fully Homomorphic Encryption. Oracle resolution happens against sealed ciphertexts. Payouts route silently through Privara (ReineiraOS) — no financial data ever touches the public chain.
+Umbra V5 stores coverage, premium, thresholds, and payout math as encrypted on-chain ciphertexts. Oracle resolution uses verified Chainlink feeds inside the contract. Settlement routes through Privara (ReineiraOS) with escrow proof linking before `markSettled`.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│  Chainlink   │─────▶│  Umbra Core  │─────▶│   Privara   │
-│  Oracle Feed │      │  (Fhenix FHE)│      │  Settlement │
-└─────────────┘      └──────────────┘      └─────────────┘
-     Public               Encrypted             Silent
-   Price Data          Comparison (FHE)     Treasury Payout
+Holder → CoFHE encrypt → UmbraInsurance V5 → Chainlink resolve → FHE trigger/payout
+                              ↓
+                    ACL + permits (audit/reinsurer)
+                              ↓
+              Privara escrow (create → fund → redeem) → markSettled
 ```
 
-### Flow
+### What stays public vs encrypted
 
-1. **Policy Creation** — Holder encrypts coverage, premium, and threshold using Fhenix's `BfheClient`. Encrypted ciphertexts are stored on-chain.
-2. **Oracle Monitoring** — Chainlink price feeds provide public market data. The contract compares oracle values against FHE-encrypted thresholds.
-3. **Trigger & Settlement** — When the threshold is breached, Privara (ReineiraOS) executes a silent payout to the beneficiary. No coverage amount is ever exposed on-chain.
+| Data | Visibility |
+|------|------------|
+| Policy existence, status, blocks | Public on-chain |
+| Oracle feed address, Chainlink price at resolve | Public (parametric design) |
+| Coverage, premium, threshold, payout | Encrypted (CoFHE) |
+| Trigger result, proximity flag | Encrypted ebool — sealed decrypt only |
+| Settlement amount via Privara | Confidential (ReineiraOS) |
+
+See `lib/privacy-boundaries.ts` for the full classification.
 
 ---
 
@@ -30,155 +35,115 @@
 | Layer | Technology |
 |-------|-----------|
 | Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
-| Animation | Framer Motion 11 |
-| Web3 | wagmi v2, viem v2 |
-| FHE | Fhenix (coFHE SDK / BfheClient) |
-| Oracle | Chainlink Price Feeds |
-| Settlement | Privara (ReineiraOS SDK) |
-| Smart Contract | Solidity 0.8.20 |
-| Network | Fhenix Helium Testnet (Chain ID 8008135) |
+| Web3 | wagmi v2, viem v2, RainbowKit |
+| FHE | `@cofhe/sdk`, `@cofhe/react` on Ethereum Sepolia |
+| Oracle | Chainlink AggregatorV3 (Sepolia feeds in `lib/constants.ts`) |
+| Settlement | `@reineira-os/sdk` (Privara / ReineiraOS testnet) |
+| Contracts | Solidity 0.8.25, `@fhenixprotocol/cofhe-contracts` |
 
 ---
 
-## Project Structure
-
-```
-umbra/
-├── app/
-│   ├── globals.css
-│   ├── layout.tsx               # Root layout
-│   ├── page.tsx                 # Landing page
-│   ├── dashboard/
-│   │   ├── layout.tsx           # Dashboard sidebar layout
-│   │   ├── page.tsx             # Dashboard overview
-│   │   ├── create/
-│   │   │   └── page.tsx         # Create new policy
-│   │   └── policy/
-│   │       └── [id]/
-│   │           └── page.tsx     # Policy detail
-│   └── settle/
-│       └── [id]/
-│           └── page.tsx         # Settlement execution
-├── components/
-│   ├── ui/                      # Design system primitives
-│   ├── landing/                 # Landing page sections
-│   ├── dashboard/               # Dashboard components
-│   └── forms/                   # Policy & oracle forms
-├── hooks/                       # React hooks (FHE, Privara, contract)
-├── lib/                         # Types, constants, utils, SDK wrappers
-├── contracts/
-│   ├── UmbraInsurance.sol       # Main contract
-│   └── interfaces/
-│       └── IUmbra.sol           # Contract interface
-├── .env.example
-├── package.json
-├── tsconfig.json
-├── tailwind.config.ts
-├── next.config.ts
-└── postcss.config.mjs
-```
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm (recommended) or npm
-
-### Installation
+## Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/umbra.git
-cd umbra
-
-# Install dependencies
 pnpm install
-
-# Copy environment variables
 cp .env.example .env.local
-# Fill in your API keys and contract addresses
+# Set NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID and contract address after deploy
 
-# Start development server
+pnpm run compile:contracts
+pnpm run export:abi
+pnpm run test:contracts
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Build
+### Deploy contract (Sepolia)
 
 ```bash
-pnpm build
-pnpm start
+pnpm run deploy:sepolia
+# Updates deployment.json — copy address into .env.local
 ```
 
 ---
 
-## Smart Contract
+## Operator Runbook
 
-The `UmbraInsurance.sol` contract is designed for the **Fhenix Helium testnet**.
+### Wallets
 
-### Key Functions
+| Role | Purpose |
+|------|---------|
+| **Owner** | Pause, grant viewers, emergency `resolveWithOracle` (V5 owner-only) |
+| **Trusted oracle** | `resolveWithChainlink`, refresh proximity |
+| **Privara router** | Settlement authorization on-chain |
+| **Holder / beneficiary** | Create policy, link escrow, mark settled |
+| **Arbitrator** | Resolve disputes assigned per policy |
 
-| Function | Description |
-|----------|-------------|
-| `createPolicy()` | Creates a new policy with FHE-encrypted terms |
-| `resolveWithOracle()` | Oracle compares public value against encrypted threshold |
-| `markSettled()` | Records Privara settlement transaction |
-| `expirePolicy()` | Expires a policy past its expiry block |
-| `disputePolicy()` | Flags a policy for dispute review |
+### Oracle resolution
 
-### Deployment
+1. Connect trusted oracle wallet (`NEXT_PUBLIC_UMBRA_ORACLE`).
+2. Open policy → **Resolve with Oracle** → **Resolve via Chainlink**.
+3. Contract reads feed on-chain; threshold stays encrypted.
 
-```bash
-# Using Hardhat or Foundry — deploy to Fhenix Helium
-# Update NEXT_PUBLIC_UMBRA_CONTRACT in .env.local with the deployed address
+### Settlement (V5)
+
+1. Policy status must be **Triggered**.
+2. Run **Settlement Wizard**: sealed decrypt → Privara escrow → link escrow → `markSettled`.
+3. V5 requires `policyEscrowId` or settlement tx proof before marking settled.
+
+### Audit permits
+
+1. Holder opens **Audit Portal** → issue CoFHE sharing permit.
+2. Auditor imports permit → sealed decrypt read-only handles.
+
+---
+
+## Deployed Contract (Sepolia V5)
+
+| Field | Value |
+|-------|-------|
+| **Address** | `0x87c3a6c25e49563CFB5CC48600C820aa81b329B3` |
+| **Network** | Ethereum Sepolia (11155111) |
+| **Owner / Oracle / Router** | `0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1` |
+| **Deploy tx** | [0xd874…97d5](https://sepolia.etherscan.io/tx/0xd87438550942c3b372b891eb83586e45878ca1f2995168fa1aa19b25a4c197d5) |
+| **Explorer** | [Etherscan](https://sepolia.etherscan.io/address/0x87c3a6c25e49563CFB5CC48600C820aa81b329B3) |
+
+Set in `.env.local`:
+
+```env
+NEXT_PUBLIC_UMBRA_CONTRACT=0x87c3a6c25e49563CFB5CC48600C820aa81b329B3
+NEXT_PUBLIC_UMBRA_V5=true
+NEXT_PUBLIC_UMBRA_VERSION=V5
+NEXT_PUBLIC_UMBRA_ORACLE=0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1
 ```
 
 ---
 
-## Key Features
+## E2E Checklist (Sepolia)
 
-- **Fully Encrypted Terms** — Coverage, premium, and threshold stored as FHE ciphertexts (euint64)
-- **Sealed Comparison** — Oracle values compared against encrypted thresholds without decryption
-- **Silent Settlement** — Payouts routed through Privara with zero on-chain financial exposure
-- **Five Risk Categories** — Drought, Flood, Earthquake, Hurricane, Wildfire
-- **Real-time Oracle Feeds** — Chainlink price feed integration with live monitoring
-- **Animated Dashboard** — Full particle canvas, energy orb, animated transitions, count-up stats
-
----
-
-## Design
-
-The UI features a deep cosmic dark theme (`#020817` background) with:
-
-- Blue (`#3B82F6`) and violet (`#8B5CF6`) accent system
-- Glass-morphism nav bar with scroll-based opacity
-- Animated particle canvas background
-- Energy orb with orbital rings and traveling dots
-- Encrypted value reveal animations (locked → decrypting → revealed)
-- Spring-physics micro-interactions on all interactive elements
+- [x] Deploy V5 contract; set `NEXT_PUBLIC_UMBRA_CONTRACT`
+- [ ] Connect holder wallet; create policy with encrypted terms
+- [ ] Oracle wallet: `resolveWithChainlink` on active policy
+- [ ] Holder: sealed decrypt trigger + payout in Settlement Wizard
+- [ ] Privara: escrow funded and redeemed; escrow linked on Umbra
+- [ ] `markSettled` succeeds; policy status = Settled
+- [ ] Auditor permit: read-only decrypt of assigned handles
+- [ ] Arbitrator: only assigned wallet resolves dispute
+- [ ] Build gates: `compile:contracts`, `export:abi`, `test:contracts`, `tsc --noEmit`, `build`
 
 ---
 
-## Risk Categories
+## Scripts
 
-| Category | Oracle Feed | FHE Operator |
-|----------|------------|--------------|
-| Drought | Rainfall Index | `euint64.lt` (Below threshold) |
-| Flood | Water Level | `euint64.gt` (Above threshold) |
-| Earthquake | Seismic Index | `euint64.gt` (Above threshold) |
-| Hurricane | Wind Speed | `euint64.gt` (Above threshold) |
-| Wildfire | Heat Index | `euint64.gt` (Above threshold) |
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Next.js dev server |
+| `pnpm build` | Production build |
+| `pnpm compile:contracts` | Hardhat compile |
+| `pnpm export:abi` | Export ABI to `lib/abi.ts` |
+| `pnpm test:contracts` | Hardhat tests |
+| `pnpm deploy:sepolia` | Deploy to Sepolia |
 
 ---
 
 ## License
 
 MIT
-
----
-
-Built for the Fhenix × Chainlink hackathon.

@@ -17,10 +17,13 @@ import {
   usePolicy,
   usePolicyHandles,
   useMarkSettled,
+  useLinkSettlementEscrow,
+  usePolicyEscrowId,
   isValidPolicy,
 } from "@/hooks/useUmbraContract";
 import { useFhenix } from "@/hooks/useFhenix";
 import { usePrivara } from "@/hooks/usePrivara";
+import { txHashToBytes32 } from "@/lib/fhenix";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
 import {
   getOracleValueForFeed,
@@ -91,8 +94,10 @@ export default function SettlementPage() {
 
   const { data: policy, isLoading } = usePolicy(policyId);
   const handles = usePolicyHandles(policyId);
+  const { data: linkedEscrowId } = usePolicyEscrowId(policyId);
   const { markSettled } = useMarkSettled();
-  const { settlePolicy } = usePrivara();
+  const { linkSettlementEscrow } = useLinkSettlementEscrow();
+  const { settlePolicy, progress } = usePrivara();
   const { decryptBool, decryptValue, clientReady } = useFhenix();
   const chainlinkPrices = useChainlinkPrices();
 
@@ -158,10 +163,14 @@ export default function SettlementPage() {
         riskCategory: String(policy.riskCategory),
       });
 
-      // Stage 4: Mark settled on-chain
+      if (result.escrowIdBytes32 && !linkedEscrowId) {
+        setStage("execute-payout");
+        await linkSettlementEscrow(policyId, result.escrowIdBytes32);
+      }
+
       setStage("mark-settled");
-      const settleTx = result.transactionHash as `0x${string}`;
-      setSettleTxHash(settleTx);
+      const settleTx = txHashToBytes32(result.transactionHash);
+      setSettleTxHash(result.transactionHash);
       await markSettled(policyId, settleTx);
 
       setStage("complete");
@@ -183,6 +192,8 @@ export default function SettlementPage() {
     settlePolicy,
     policyId,
     markSettled,
+    linkSettlementEscrow,
+    linkedEscrowId,
   ]);
 
   if (isLoading) {

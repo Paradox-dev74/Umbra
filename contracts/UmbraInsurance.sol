@@ -6,8 +6,8 @@ import "./interfaces/IUmbra.sol";
 import "./interfaces/Chainlink.sol";
 
 /**
- * @title UmbraInsurance V4
- * @notice Parametric insurance via Fhenix CoFHE — hardened ACL, dispute flow, holder indexing.
+ * @title UmbraInsurance V5
+ * @notice Parametric insurance via Fhenix CoFHE — settlement escrow proofs, private resolution events, premium lifecycle.
  */
 contract UmbraInsurance is IUmbra {
     mapping(uint256 => euint64) private _encCoverage;
@@ -29,6 +29,9 @@ contract UmbraInsurance is IUmbra {
 
     address[] private _globalExposureViewers;
     mapping(address => bool) public isGlobalExposureViewer;
+
+    mapping(uint256 => bytes32) public policyEscrowId;
+    mapping(uint256 => bool) public premiumLocked;
 
     uint256 public nextPolicyId;
     mapping(uint256 => Policy) public policies;
@@ -243,7 +246,16 @@ contract UmbraInsurance is IUmbra {
 
         _holderPolicyIds[msg.sender].push(policyId);
 
+        premiumLocked[policyId] = true;
+
         emit PolicyCreated(policyId, msg.sender, _beneficiary, _riskCategory, _policyHash);
+    }
+
+    function _refundPremium(uint256 policyId) private {
+        if (premiumLocked[policyId]) {
+            premiumLocked[policyId] = false;
+            emit PremiumRefunded(policyId);
+        }
     }
 
     function getHolderPolicyCount(address holder) external view returns (uint256) {
@@ -314,11 +326,12 @@ contract UmbraInsurance is IUmbra {
         return uint256(answer);
     }
 
+    /// @notice Emergency manual oracle resolution — owner only (V5); prefer resolveWithChainlink.
     function resolveWithOracle(
         uint256 policyId,
         uint256 oracleValue,
         bool
-    ) external onlyOracle policyExists(policyId) whenNotPaused {
+    ) external onlyOwner policyExists(policyId) whenNotPaused {
         _resolvePolicy(policyId, oracleValue);
     }
 
@@ -332,7 +345,7 @@ contract UmbraInsurance is IUmbra {
         require(policy.status == PolicyStatus.Active, "Umbra: not active");
 
         uint256 oracleValue = _readChainlinkOracle(policy.oracleFeed);
-        emit ChainlinkResolved(policyId, policy.oracleFeed, oracleValue);
+        emit ChainlinkResolved(policyId, policy.oracleFeed);
         _resolvePolicy(policyId, oracleValue);
     }
 
@@ -420,7 +433,8 @@ contract UmbraInsurance is IUmbra {
         policy.status = PolicyStatus.OracleTriggered;
         policy.resolvedBlock = block.number;
 
-        emit PolicyResolved(policyId, oracleValue);
+        emit PolicyResolvedPrivate(policyId, policy.oracleFeed);
+        emit PolicyResolved(policyId);
     }
 
     function _evaluateTrigger(
@@ -441,6 +455,34 @@ contract UmbraInsurance is IUmbra {
         return FHE.gte(encOracleVal, encThreshold);
     }
 
+    function linkSettlementEscrow(uint256 policyId, bytes32 escrowId)
+        external
+        policyExists(policyId)
+        whenNotPaused
+    {
+        Policy storage policy = policies[policyId];
+        require(policy.status == PolicyStatus.OracleTriggered, "Umbra: not triggered");
+        require(
+            msg.sender == policy.holder ||
+                msg.sender == policy.beneficiary ||
+                msg.sender == privaraRouter ||
+                msg.sender == owner,
+            "Umbra: not authorized"
+        );
+        require(escrowId != bytes32(0), "Umbra: zero escrow");
+        policyEscrowId[policyId] = escrowId;
+        emit PolicyEscrowLinked(policyId, escrowId);
+    }
+
+    function getPolicyEscrowId(uint256 policyId)
+        external
+        view
+        policyExists(policyId)
+        returns (bytes32)
+    {
+        return policyEscrowId[policyId];
+    }
+
     function markSettled(uint256 policyId, bytes32 _settlementTx)
         external
         policyExists(policyId)
@@ -454,6 +496,10 @@ contract UmbraInsurance is IUmbra {
                 msg.sender == policy.holder ||
                 msg.sender == policy.beneficiary,
             "Umbra: not authorized"
+        );
+        require(
+            policyEscrowId[policyId] != bytes32(0) || _settlementTx != bytes32(0),
+            "Umbra: no settlement proof"
         );
         policy.status = PolicyStatus.Settled;
         policy.settlementTx = _settlementTx;
@@ -576,6 +622,20 @@ contract UmbraInsurance is IUmbra {
         emit GlobalExposureViewerGranted(viewer);
     }
 
+    function revokeGlobalExposureViewer(address viewer) external onlyOwner whenNotPaused {
+        require(isGlobalExposureViewer[viewer], "Umbra: not viewer");
+        isGlobalExposureViewer[viewer] = false;
+
+        uint256 len = _globalExposureViewers.length;
+        for (uint256 i = 0; i < len; i++) {
+            if (_globalExposureViewers[i] == viewer) {
+                _globalExposureViewers[i] = _globalExposureViewers[len - 1];
+                _globalExposureViewers.pop();
+                break;
+            }
+        }
+    }
+
     function getGlobalExposureViewerCount() external view returns (uint256) {
         return _globalExposureViewers.length;
     }
@@ -586,6 +646,7 @@ contract UmbraInsurance is IUmbra {
         require(block.number > policy.expiryBlock, "Umbra: not expired yet");
         policy.status = PolicyStatus.Expired;
         _subtractExposure(policy.holder, policyId);
+        _refundPremium(policyId);
         emit PolicyExpired(policyId);
     }
 
@@ -643,6 +704,7 @@ contract UmbraInsurance is IUmbra {
         require(policy.status == PolicyStatus.Active, "Umbra: not active");
         policy.status = PolicyStatus.Cancelled;
         _subtractExposure(policy.holder, policyId);
+        _refundPremium(policyId);
         emit PolicyCancelled(policyId);
     }
 

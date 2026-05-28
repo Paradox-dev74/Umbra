@@ -224,6 +224,41 @@ export function usePolicyHandles(policyId: number) {
   };
 }
 
+export function usePolicyEscrowId(policyId: number) {
+  return useReadContract({
+    address: UMBRA_CONTRACT_ADDRESS,
+    abi: UMBRA_ABI,
+    functionName: "getPolicyEscrowId",
+    args: [BigInt(policyId)],
+    query: { enabled: !Number.isNaN(policyId) && policyId >= 0 },
+  });
+}
+
+export function usePremiumLocked(policyId: number) {
+  return useReadContract({
+    address: UMBRA_CONTRACT_ADDRESS,
+    abi: UMBRA_ABI,
+    functionName: "premiumLocked",
+    args: [BigInt(policyId)],
+    query: { enabled: !Number.isNaN(policyId) && policyId >= 0 },
+  });
+}
+
+export function useLinkSettlementEscrow() {
+  const { writeContractAsync, isPending, error } = useWriteContract();
+  const linkSettlementEscrow = async (
+    policyId: number,
+    escrowId: `0x${string}`
+  ) =>
+    writeContractAsync({
+      address: UMBRA_CONTRACT_ADDRESS,
+      abi: UMBRA_ABI,
+      functionName: "linkSettlementEscrow",
+      args: [BigInt(policyId), escrowId],
+    });
+  return { linkSettlementEscrow, isPending, error };
+}
+
 export function useMarkSettled() {
   const { writeContractAsync, isPending, error } = useWriteContract();
   const markSettled = async (policyId: number, settlementTxHash: `0x${string}`) =>

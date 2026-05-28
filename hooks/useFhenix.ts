@@ -11,6 +11,8 @@ import {
   encryptPolicyTerms,
   decryptHandle,
   decryptBoolHandle,
+  decryptHandleForTx,
+  encryptComparisonInputs,
   setFhenixClient,
 } from "@/lib/fhenix";
 import type { EncryptedPolicyInputs } from "@/lib/fhenix";
@@ -66,6 +68,22 @@ export function useFhenix() {
     [client]
   );
 
+  const decryptForTx = useCallback(
+    async (ctHash: `0x${string}`) => {
+      if (!client) throw new Error("CoFHE client not ready");
+      return decryptHandleForTx(client, ctHash);
+    },
+    [client]
+  );
+
+  const encryptComparison = useCallback(
+    async (oracleValue: bigint, thresholdValue: bigint) => {
+      if (!client) throw new Error("CoFHE client not ready");
+      return encryptComparisonInputs(client, oracleValue, thresholdValue);
+    },
+    [client]
+  );
+
   return {
     clientReady: !!client,
     isConnecting: !client,
@@ -74,6 +92,8 @@ export function useFhenix() {
     encryptPolicy,
     decryptValue,
     decryptBool,
+    decryptForTx,
+    encryptComparison,
   };
 }
 

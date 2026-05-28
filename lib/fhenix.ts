@@ -66,50 +66,30 @@ export async function encryptPolicyTerms(
   return result;
 }
 
-/** Client-side FHE demo: encrypt values for homomorphic comparison pipeline */
-export async function encryptComparisonDemo(
+/** Encrypt oracle + threshold inputs for Privacy Lab — no cleartext comparison on client */
+export async function encryptComparisonInputs(
   client: CofheClient,
   oracleValue: bigint,
   thresholdValue: bigint
-): Promise<{ oracleCt: EncryptedUint64Input; thresholdCt: EncryptedUint64Input }> {
+): Promise<{
+  oracleCt: EncryptedUint64Input;
+  thresholdCt: EncryptedUint64Input;
+  oracleHash: string;
+  thresholdHash: string;
+}> {
   const encrypted = await client
     .encryptInputs([
       Encryptable.uint64(oracleValue),
       Encryptable.uint64(thresholdValue),
     ])
     .execute();
+  const oracleCt = encrypted[0] as EncryptedUint64Input;
+  const thresholdCt = encrypted[1] as EncryptedUint64Input;
   return {
-    oracleCt: encrypted[0] as EncryptedUint64Input,
-    thresholdCt: encrypted[1] as EncryptedUint64Input,
-  };
-}
-
-/** Privacy-preserving proximity: encrypt + evaluate band without exposing threshold in UI */
-export async function encryptProximityBand(
-  client: CofheClient,
-  oracleValue: bigint,
-  thresholdValue: bigint,
-  bandPercent: number
-): Promise<{
-  withinBand: boolean;
-  distancePct: number;
-  wouldTriggerGte: boolean;
-  wouldTriggerLte: boolean;
-}> {
-  await encryptComparisonDemo(client, oracleValue, thresholdValue);
-  const band = Math.max(1, Math.min(50, bandPercent));
-  const delta = (thresholdValue * BigInt(band)) / 100n;
-  const lower = thresholdValue > delta ? thresholdValue - delta : 0n;
-  const upper = thresholdValue + delta;
-  const withinBand = oracleValue >= lower && oracleValue <= upper;
-  const distancePct = thresholdValue > 0n
-    ? Number((oracleValue * 100n) / thresholdValue)
-    : 0;
-  return {
-    withinBand,
-    distancePct: Math.min(200, distancePct),
-    wouldTriggerGte: oracleValue >= thresholdValue,
-    wouldTriggerLte: oracleValue <= thresholdValue,
+    oracleCt,
+    thresholdCt,
+    oracleHash: String((oracleCt as { ctHash?: bigint }).ctHash ?? ""),
+    thresholdHash: String((thresholdCt as { ctHash?: bigint }).ctHash ?? ""),
   };
 }
 
@@ -133,6 +113,21 @@ export async function decryptBoolHandle(
   return Boolean(result);
 }
 
+/** Verifiable decrypt signature for on-chain tx submission */
+export async function decryptHandleForTx(
+  client: CofheClient,
+  ctHash: `0x${string}`
+): Promise<{ value: bigint; signature: `0x${string}` }> {
+  const result = await client
+    .decryptForTx(ctHash)
+    .withoutPermit()
+    .execute();
+  return {
+    value: (result as { decryptedValue: bigint }).decryptedValue,
+    signature: (result as { signature: `0x${string}` }).signature,
+  };
+}
+
 export type InEuint64Tuple = {
   ctHash: bigint;
   securityZone: number;
@@ -142,4 +137,14 @@ export type InEuint64Tuple = {
 
 export function asInEuint64(input: EncryptedUint64Input): InEuint64Tuple {
   return input as InEuint64Tuple;
+}
+
+export function escrowIdToBytes32(escrowId: bigint): `0x${string}` {
+  const hex = escrowId.toString(16).padStart(64, "0");
+  return `0x${hex}` as `0x${string}`;
+}
+
+export function txHashToBytes32(txHash: string): `0x${string}` {
+  const normalized = txHash.startsWith("0x") ? txHash.slice(2) : txHash;
+  return `0x${normalized.padStart(64, "0").slice(0, 64)}` as `0x${string}`;
 }

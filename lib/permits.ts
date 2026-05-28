@@ -1,7 +1,15 @@
 "use client";
 
 import type { WalletClient, PublicClient } from "viem";
-import { PermitUtils, setPermit, setActivePermitHash, ValidationUtils, permitStore } from "@cofhe/sdk/permits";
+import {
+  PermitUtils,
+  setPermit,
+  setActivePermitHash,
+  ValidationUtils,
+  permitStore,
+  getActivePermit,
+  getPermits,
+} from "@cofhe/sdk/permits";
 
 export interface IssuedAuditPermit {
   hash: string;
@@ -62,4 +70,4 @@ export function formatPermitExpiry(expiration: number): string {
   return `${mins}m remaining`;
 }
 
-export { ValidationUtils, PermitUtils, permitStore, setPermit };
+export { ValidationUtils, PermitUtils, permitStore, setPermit, getActivePermit, getPermits };

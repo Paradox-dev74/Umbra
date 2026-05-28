@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { setPermit, formatPermitExpiry } from "@/lib/permits";
-import { permitStore } from "@/lib/permits";
+import { setPermit, formatPermitExpiry, getPermits } from "@/lib/permits";
 import { Eye, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
@@ -14,9 +13,7 @@ export default function AuditPortalPage() {
   const chainId = useChainId();
   const [importJson, setImportJson] = useState("");
 
-  const permits = address
-    ? Object.values(permitStore.getPermits(chainId, address))
-    : [];
+  const permits = address ? Object.values(getPermits(chainId, address)) : [];
 
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-8">

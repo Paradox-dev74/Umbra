@@ -18,15 +18,20 @@ export function getWagmiConfig(): Config {
   const { getDefaultConfig } = require("@rainbow-me/rainbowkit") as typeof import("@rainbow-me/rainbowkit");
   const { http } = require("wagmi") as typeof import("wagmi");
   const { sepolia } = require("@/lib/constants") as typeof import("@/lib/constants");
+  const { umbraConfig } = require("@/lib/config") as typeof import("@/lib/config");
+
+  const projectId =
+    umbraConfig.walletConnectProjectId &&
+    umbraConfig.walletConnectProjectId !== "PLACEHOLDER_PROJECT_ID"
+      ? umbraConfig.walletConnectProjectId
+      : process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER_PROJECT_ID";
 
   wagmiConfig = getDefaultConfig({
     appName: "Umbra Protocol",
-    projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "PLACEHOLDER_PROJECT_ID",
+    projectId,
     chains: [sepolia],
     transports: {
-      [sepolia.id]: http(
-        process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com"
-      ),
+      [sepolia.id]: http(umbraConfig.sepoliaRpcUrl),
     },
     ssr: true,
   });

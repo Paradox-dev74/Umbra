@@ -8,8 +8,11 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 import { cn, formatAddress } from "@/lib/utils";
 import { CofheStatusBanner } from "@/components/dashboard/CofheStatusBanner";
+import { RoleBanner } from "@/components/dashboard/RoleBanner";
 import { MeshBackground } from "@/components/ui/MeshBackground";
 import { UmbraLogo } from "@/components/ui/UmbraLogo";
+import { useUserRoles, type UmbraRole } from "@/hooks/useUserRole";
+import { UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
 import {
   LayoutGrid,
   Shield,
@@ -31,26 +34,27 @@ type NavItem = {
   label: string;
   href: string;
   exact?: boolean;
+  roles?: UmbraRole[];
 };
 
 const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: "Policyholder",
     items: [
-      { icon: LayoutGrid, label: "Overview", href: "/dashboard", exact: true },
-      { icon: Shield, label: "My Policies", href: "/dashboard/policies" },
-      { icon: Plus, label: "Create Policy", href: "/dashboard/create" },
-      { icon: FlaskConical, label: "Privacy Lab", href: "/dashboard/privacy" },
+      { icon: LayoutGrid, label: "Overview", href: "/dashboard", exact: true, roles: ["holder", "beneficiary", "guest"] },
+      { icon: Shield, label: "My Policies", href: "/dashboard/policies", roles: ["holder", "beneficiary"] },
+      { icon: Plus, label: "Create Policy", href: "/dashboard/create", roles: ["holder"] },
+      { icon: FlaskConical, label: "Privacy Lab", href: "/dashboard/privacy", roles: ["holder", "owner"] },
     ],
   },
   {
     title: "Operations",
     items: [
-      { icon: Radio, label: "Oracle Feeds", href: "/dashboard/oracle" },
-      { icon: Zap, label: "Oracle Ops", href: "/dashboard/oracle/ops" },
-      { icon: Globe, label: "Reinsurance", href: "/dashboard/reinsurance" },
-      { icon: Eye, label: "Audit Portal", href: "/dashboard/audit" },
-      { icon: Scale, label: "Arbitrator", href: "/dashboard/arbitrator" },
+      { icon: Radio, label: "Oracle Feeds", href: "/dashboard/oracle", roles: ["oracle", "owner", "holder"] },
+      { icon: Zap, label: "Oracle Ops", href: "/dashboard/oracle/ops", roles: ["oracle", "owner"] },
+      { icon: Globe, label: "Reinsurance", href: "/dashboard/reinsurance", roles: ["reinsurer", "owner"] },
+      { icon: Eye, label: "Audit Portal", href: "/dashboard/audit", roles: ["owner", "holder"] },
+      { icon: Scale, label: "Arbitrator", href: "/dashboard/arbitrator", roles: ["arbitrator", "owner"] },
     ],
   },
   {
@@ -59,15 +63,26 @@ const navSections: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+function canSeeNavItem(item: NavItem, roles: UmbraRole[], address?: string): boolean {
+  if (!item.roles) return true;
+  if (roles.some((r) => item.roles!.includes(r))) return true;
+  if (address && address.toLowerCase() === UMBRA_TRUSTED_ORACLE.toLowerCase() && item.roles.includes("oracle")) {
+    return true;
+  }
+  return item.roles.includes("holder") && roles.includes("guest");
+}
+
 function SidebarContent({
   pathname,
   address,
   isConnected,
+  roles,
   onNavClick,
 }: {
   pathname: string;
   address?: `0x${string}`;
   isConnected: boolean;
+  roles: UmbraRole[];
   onNavClick?: () => void;
 }) {
   return (
@@ -85,7 +100,9 @@ function SidebarContent({
               {section.title}
             </p>
             <div className="space-y-0.5">
-              {section.items.map((item) => {
+              {section.items
+                .filter((item) => canSeeNavItem(item, roles, address))
+                .map((item) => {
                 const isActive = item.exact
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -161,6 +178,7 @@ function SidebarContent({
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
+  const { roles } = useUserRoles();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -168,7 +186,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <MeshBackground intensity="subtle" className="fixed inset-0" />
 
       <aside className="hidden lg:flex flex-col w-[268px] border-r border-white/[0.06] glass-dark relative z-10 shrink-0">
-        <SidebarContent pathname={pathname} address={address} isConnected={isConnected} />
+        <SidebarContent pathname={pathname} address={address} isConnected={isConnected} roles={roles} />
       </aside>
 
       <AnimatePresence>
@@ -201,6 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 pathname={pathname}
                 address={address}
                 isConnected={isConnected}
+                roles={roles}
                 onNavClick={() => setMobileOpen(false)}
               />
             </motion.aside>
@@ -233,7 +252,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="min-h-screen pb-12"
           >
             <div className="px-4 md:px-8 pt-4 md:pt-6 max-w-7xl mx-auto">
-              <CofheStatusBanner className="mb-6" />
+              <CofheStatusBanner className="mb-4" />
+              <RoleBanner roles={roles} message="Navigation filtered by your wallet role on this contract." className="mb-6" />
             </div>
             {children}
           </motion.div>

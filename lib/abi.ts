@@ -57,12 +57,6 @@ export const UMBRA_ABI = [
         "internalType": "address",
         "name": "feed",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "oracleValue",
-        "type": "uint256"
       }
     ],
     "name": "ChainlinkResolved",
@@ -202,6 +196,25 @@ export const UMBRA_ABI = [
         "internalType": "uint256",
         "name": "policyId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "escrowId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PolicyEscrowLinked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
       }
     ],
     "name": "PolicyExpired",
@@ -215,15 +228,28 @@ export const UMBRA_ABI = [
         "internalType": "uint256",
         "name": "policyId",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "oracleValue",
-        "type": "uint256"
       }
     ],
     "name": "PolicyResolved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "feed",
+        "type": "address"
+      }
+    ],
+    "name": "PolicyResolvedPrivate",
     "type": "event"
   },
   {
@@ -243,6 +269,19 @@ export const UMBRA_ABI = [
       }
     ],
     "name": "PolicySettled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      }
+    ],
+    "name": "PremiumRefunded",
     "type": "event"
   },
   {
@@ -1119,6 +1158,25 @@ export const UMBRA_ABI = [
         "type": "uint256"
       }
     ],
+    "name": "getPolicyEscrowId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      }
+    ],
     "name": "getPremiumHandle",
     "outputs": [
       {
@@ -1305,6 +1363,24 @@ export const UMBRA_ABI = [
       },
       {
         "internalType": "bytes32",
+        "name": "escrowId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "linkSettlementEscrow",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "policyId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
         "name": "_settlementTx",
         "type": "bytes32"
       }
@@ -1454,6 +1530,44 @@ export const UMBRA_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "policyEscrowId",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "premiumLocked",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "privaraRouter",
     "outputs": [
@@ -1547,6 +1661,19 @@ export const UMBRA_ABI = [
       }
     ],
     "name": "resolveWithOracle",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "viewer",
+        "type": "address"
+      }
+    ],
+    "name": "revokeGlobalExposureViewer",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

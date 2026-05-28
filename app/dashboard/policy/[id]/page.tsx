@@ -14,6 +14,11 @@ import { EncryptedValue } from "@/components/ui/EncryptedValue";
 import { OracleProofForm } from "@/components/forms/OracleProofForm";
 import { PrivacyDelegateForm } from "@/components/forms/PrivacyDelegateForm";
 import { TriggerProximityMonitor } from "@/components/dashboard/TriggerProximityMonitor";
+import { SettlementWizard } from "@/components/dashboard/SettlementWizard";
+import { PolicyTimeline, policyStatusToTimelineStep } from "@/components/dashboard/PolicyTimeline";
+import { RoleBanner } from "@/components/dashboard/RoleBanner";
+import { PrivacyAccessPanel } from "@/components/dashboard/PrivacyAccessPanel";
+import { useUserRoles } from "@/hooks/useUserRole";
 import {
   RISK_CATEGORIES,
   ORACLE_FEEDS,
@@ -154,12 +159,29 @@ export default function PolicyDetailPage() {
   const liveOracle = feedKey ? getOracleValueForFeed(feedKey, chainlinkPrices) : null;
   const isHolder =
     !!address && (policy.holder as string).toLowerCase() === address.toLowerCase();
+  const { roles } = useUserRoles({
+    holder: policy.holder as `0x${string}`,
+    beneficiary: policy.beneficiary as `0x${string}`,
+    status: policy.status as number,
+  });
   const isExpiredByBlock =
     blockNumber !== undefined && blockNumber > policy.expiryBlock;
   const isBand = isIndexBandPolicy(policy);
 
   return (
     <div className="p-6 md:p-8 space-y-6">
+      <RoleBanner roles={roles} className="mb-2" />
+      <PolicyTimeline
+        currentStep={policyStatusToTimelineStep(policy.status as number)}
+        completedSteps={
+          policy.status >= 2
+            ? ["encrypt", "submit", "oracle", "settle", "audit"]
+            : policy.status >= 1
+              ? ["encrypt", "submit", "oracle"]
+              : ["encrypt", "submit"]
+        }
+        className="mb-4"
+      />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -522,6 +544,11 @@ export default function PolicyDetailPage() {
             </CardBody>
           </Card>
 
+          {/* Settlement wizard — triggered policies */}
+          {policy.status === 1 && (
+            <SettlementWizard policyId={policyId} policy={policy} />
+          )}
+
           {/* Metadata */}
           <Card>
             <CardHeader>
@@ -561,6 +588,7 @@ export default function PolicyDetailPage() {
               )}
             </CardBody>
           </Card>
+          <PrivacyAccessPanel policyId={policyId} />
         </div>
       </div>
     </div>

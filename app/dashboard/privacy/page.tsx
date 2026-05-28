@@ -9,7 +9,7 @@ import { FadeIn, Stagger, StaggerItem } from "@/components/ui/Motion";
 import { MeshBackground } from "@/components/ui/MeshBackground";
 import { cn } from "@/lib/utils";
 import { useCofheClient } from "@cofhe/react";
-import { encryptComparisonDemo } from "@/lib/fhenix";
+import { encryptComparisonInputs } from "@/lib/fhenix";
 import { useFhenix } from "@/hooks/useFhenix";
 import {
   useGlobalExposureHandle,
@@ -17,6 +17,7 @@ import {
   useMaxPremiumRatioDivisor,
 } from "@/hooks/usePrivacyFeatures";
 import { CompliancePanel } from "@/components/dashboard/CompliancePanel";
+import { PrivacyAccessPanel } from "@/components/dashboard/PrivacyAccessPanel";
 import {
   Shield,
   Lock,
@@ -108,7 +109,7 @@ export default function PrivacyLabPage() {
   const [demoOracle, setDemoOracle] = useState("3200");
   const [demoThreshold, setDemoThreshold] = useState("3000");
   const [demoStage, setDemoStage] = useState<"idle" | "encrypting" | "done">("idle");
-  const [demoResult, setDemoResult] = useState<string | null>(null);
+  const [demoResult, setDemoResult] = useState<{ oracleHash: string; thresholdHash: string } | null>(null);
 
   const runDemo = async () => {
     if (!client) return;
@@ -117,13 +118,11 @@ export default function PrivacyLabPage() {
     try {
       const oracle = BigInt(Math.round(parseFloat(demoOracle)));
       const threshold = BigInt(Math.round(parseFloat(demoThreshold)));
-      await encryptComparisonDemo(client, oracle, threshold);
-      const wouldTrigger = oracle >= threshold;
-      setDemoResult(
-        wouldTrigger
-          ? `FHE.gte(oracle, ████) → ebool true · FHE.select → net payout`
-          : `FHE.gte(oracle, ████) → ebool false · payout = 0`
-      );
+      const result = await encryptComparisonInputs(client, oracle, threshold);
+      setDemoResult({
+        oracleHash: result.oracleHash || "encrypted",
+        thresholdHash: result.thresholdHash || "encrypted",
+      });
       setDemoStage("done");
     } catch {
       setDemoStage("idle");
@@ -272,7 +271,10 @@ export default function PrivacyLabPage() {
                 className="flex items-start gap-2 px-4 py-3 rounded-xl bg-umbra-success/10 border border-umbra-success/20"
               >
                 <Check className="w-4 h-4 text-umbra-success mt-0.5 shrink-0" />
-                <p className="text-sm text-umbra-success font-mono">{demoResult}</p>
+                <div className="text-sm text-umbra-success font-mono space-y-1">
+                  <p>Oracle ciphertext submitted — comparison runs on-chain only.</p>
+                  <p className="text-[10px] text-umbra-muted">Handles: oracle · threshold (sealed)</p>
+                </div>
               </motion.div>
             )}
           </CardBody>
@@ -281,6 +283,10 @@ export default function PrivacyLabPage() {
 
       <FadeIn delay={0.15}>
         <CompliancePanel />
+      </FadeIn>
+
+      <FadeIn delay={0.2}>
+        <PrivacyAccessPanel />
       </FadeIn>
     </div>
   );

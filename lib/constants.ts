@@ -8,13 +8,13 @@ import { sepolia } from "viem/chains";
 export { sepolia };
 
 export const UMBRA_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_UMBRA_CONTRACT ??
-  "0xb424205202228CbC385A8A5E73569A0eA41d3a06") as `0x${string}`;
+  "0x87c3a6c25e49563CFB5CC48600C820aa81b329B3") as `0x${string}`;
 
 /** Deployed trusted oracle — must use this wallet to resolve policies */
 export const UMBRA_TRUSTED_ORACLE = (process.env.NEXT_PUBLIC_UMBRA_ORACLE ??
   "0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1") as `0x${string}`;
 
-/** V2 privacy features (deductible, exposure, ACL) — enabled after redeploying latest contract */
+/** V2 privacy features (deductible, exposure, ACL) */
 export const UMBRA_V2_FEATURES =
   process.env.NEXT_PUBLIC_UMBRA_V2 !== "false";
 
@@ -26,12 +26,15 @@ export const UMBRA_V3_FEATURES =
 export const UMBRA_V4_FEATURES =
   process.env.NEXT_PUBLIC_UMBRA_V4 !== "false";
 
+/** V5: settlement escrow proofs, premium lifecycle, private resolution events, owner-only manual oracle */
+export const UMBRA_V5_FEATURES =
+  process.env.NEXT_PUBLIC_UMBRA_V5 !== "false";
+
 export const PolicyMode = {
   SingleThreshold: 0,
   IndexBand: 1,
 } as const;
 
-// Fhenix Helium kept as legacy reference (CoFHE coprocessor now live on Ethereum Sepolia)
 export const FHENIX_HELIUM_CHAIN = defineChain({
   id: 8008135,
   name: "Fhenix Helium",
@@ -52,7 +55,6 @@ export const FHENIX_HELIUM_CHAIN = defineChain({
 
 export type OracleFeedConfig = {
   name: string;
-  /** On-chain feed address (Chainlink AggregatorV3 on Sepolia) */
   address: string;
   chainlinkAddress: string;
   unit: string;
@@ -85,7 +87,6 @@ export const ORACLE_FEEDS: Record<string, OracleFeedConfig> = {
   },
 };
 
-/** Default Chainlink feed per risk category when creating a policy */
 export const RISK_CATEGORY_DEFAULT_FEED: Record<number, keyof typeof ORACLE_FEEDS> = {
   0: "ETH_USD",
   1: "BTC_USD",
@@ -108,7 +109,8 @@ export const RISK_CATEGORIES = [
     icon: "🚢",
     oracle: "Chainlink ETH/USD",
     fheOperator: "FHE.gte",
-    description: "Parametric coverage when ETH/USD crosses your encrypted threshold (testnet proxy for logistics indices).",
+    description:
+      "Parametric coverage when ETH/USD crosses your encrypted threshold (Sepolia crypto proxy for logistics risk).",
   },
   {
     id: "COMMODITY",
@@ -126,7 +128,8 @@ export const RISK_CATEGORIES = [
     icon: "🌡️",
     oracle: "Chainlink LINK/USD",
     fheOperator: "FHE.gte",
-    description: "Parametric coverage tied to LINK/USD index movement on Sepolia testnet.",
+    description:
+      "Parametric coverage tied to LINK/USD index movement on Sepolia (crypto proxy — no weather oracle on testnet).",
   },
   {
     id: "SHIPPING",
@@ -135,7 +138,8 @@ export const RISK_CATEGORIES = [
     icon: "📦",
     oracle: "Chainlink LINK/USD",
     fheOperator: "FHE.gte",
-    description: "Freight-rate spike protection using LINK/USD as the on-chain parametric feed.",
+    description:
+      "Freight-rate spike protection using LINK/USD as the on-chain parametric feed (crypto proxy).",
   },
   {
     id: "CURRENCY",

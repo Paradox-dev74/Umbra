@@ -43,14 +43,16 @@ interface IUmbra {
 
     event PolicyCreatedV3(uint256 indexed policyId, uint8 policyMode);
 
-    /// @notice Resolution complete — oracle value is public (parametric design)
-    event PolicyResolved(uint256 indexed policyId, uint256 oracleValue);
+    /// @notice Resolution complete — no public oracle value (V5)
+    event PolicyResolved(uint256 indexed policyId);
 
-    event ChainlinkResolved(
-        uint256 indexed policyId,
-        address indexed feed,
-        uint256 oracleValue
-    );
+    event PolicyResolvedPrivate(uint256 indexed policyId, address indexed feed);
+
+    event ChainlinkResolved(uint256 indexed policyId, address indexed feed);
+
+    event PolicyEscrowLinked(uint256 indexed policyId, bytes32 escrowId);
+
+    event PremiumRefunded(uint256 indexed policyId);
 
     event PolicySettled(uint256 indexed policyId, bytes32 settlementTx);
 
@@ -146,6 +148,12 @@ interface IUmbra {
     ) external;
 
     function grantGlobalExposureViewer(address viewer) external;
+
+    function revokeGlobalExposureViewer(address viewer) external;
+
+    function linkSettlementEscrow(uint256 policyId, bytes32 escrowId) external;
+
+    function getPolicyEscrowId(uint256 policyId) external view returns (bytes32);
 
     function disputePolicy(uint256 policyId, address arbitrator) external;
 

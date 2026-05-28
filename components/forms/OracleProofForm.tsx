@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
 import { useResolveWithOracle } from "@/hooks/useUmbraContract";
-import { useResolveWithChainlink, useOracleMaxStaleness } from "@/hooks/usePrivacyFeatures";
+import { useResolveWithChainlink, useOracleMaxStaleness, useContractOwner } from "@/hooks/usePrivacyFeatures";
 import { findFeedByAddress, getOracleValueForFeed, oracleValueToUint64, resolveFeedKeyFromAddress, formatOraclePrice } from "@/lib/oracle-utils";
-import { UMBRA_TRUSTED_ORACLE } from "@/lib/constants";
+import { UMBRA_TRUSTED_ORACLE, UMBRA_V5_FEATURES } from "@/lib/constants";
 import { useAccount } from "wagmi";
 import { toast } from "sonner";
 import { Zap, Check, Radio, ExternalLink, RefreshCw, Link2, Clock } from "lucide-react";
@@ -39,6 +39,7 @@ export function OracleProofForm({
   const chainlinkPrices = useChainlinkPrices();
   const { resolveWithOracle, isPending: manualPending } = useResolveWithOracle();
   const { resolveWithChainlink, isPending: chainlinkPending } = useResolveWithChainlink();
+  const { data: contractOwner } = useContractOwner();
   const { data: maxStalenessSec } = useOracleMaxStaleness();
 
   const feedEntry = useMemo(
@@ -63,7 +64,14 @@ export function OracleProofForm({
   const isPending = manualPending || chainlinkPending;
 
   const isOracleWallet =
-    address?.toLowerCase() === UMBRA_TRUSTED_ORACLE.toLowerCase();
+    !!address &&
+    !!process.env.NEXT_PUBLIC_UMBRA_ORACLE &&
+    address.toLowerCase() === process.env.NEXT_PUBLIC_UMBRA_ORACLE.toLowerCase();
+
+  const isOwnerWallet =
+    !!address &&
+    !!contractOwner &&
+    address.toLowerCase() === (contractOwner as string).toLowerCase();
 
   const stalenessLimit = maxStalenessSec ? Number(maxStalenessSec) : 3600;
   const feedAgeSec = chainlinkMeta?.updatedAt
@@ -99,8 +107,8 @@ export function OracleProofForm({
   }, [policyId, resolveWithChainlink, onComplete, isOracleWallet, isFeedStale, stalenessLimit]);
 
   const runManualResolve = useCallback(async () => {
-    if (!isOracleWallet) {
-      toast.error("Connect the trusted oracle wallet to resolve policies");
+    if (!isOwnerWallet) {
+      toast.error("Emergency manual resolve is owner-only (V5)");
       return;
     }
     setStage("fetching");
@@ -127,7 +135,7 @@ export function OracleProofForm({
         toast.error(e instanceof Error ? e.message : "Oracle resolution failed");
       }
     }
-  }, [displayValue, feedKey, operator, policyId, resolveWithOracle, onComplete, isOracleWallet]);
+  }, [displayValue, feedKey, operator, policyId, resolveWithOracle, onComplete, isOwnerWallet]);
 
   return (
     <Card glass gradientBorder className="border-umbra-cyan/20">
@@ -216,18 +224,29 @@ export function OracleProofForm({
               </>
             )}
 
-            {hasOnChainFeed && (
+            {hasOnChainFeed && UMBRA_V5_FEATURES && (
               <details className="text-xs text-umbra-muted">
-                <summary className="cursor-pointer hover:text-white">Manual oracle override</summary>
+                <summary className="cursor-pointer hover:text-white">
+                  Owner emergency resolve (manual oracle value)
+                </summary>
                 <div className="mt-3 space-y-2">
+                  {!isOwnerWallet && (
+                    <p className="text-umbra-warning">Connect contract owner wallet to use this path.</p>
+                  )}
                   <input
                     type="number"
                     value={oracleValue || String(defaultValue)}
                     onChange={(e) => setOracleValue(e.target.value)}
                     className="w-full bg-umbra-bg border border-white/10 rounded-lg px-3 py-2 text-white font-mono"
                   />
-                  <Button variant="outline" size="sm" className="w-full" onClick={runManualResolve} disabled={isPending}>
-                    Manual resolveWithOracle
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={runManualResolve}
+                    disabled={isPending || !isOwnerWallet}
+                  >
+                    Emergency resolveWithOracle (owner)
                   </Button>
                 </div>
               </details>

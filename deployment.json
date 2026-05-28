@@ -1,10 +1,12 @@
 {
   "network": "sepolia",
   "chainId": 11155111,
-  "contractAddress": "0xb424205202228CbC385A8A5E73569A0eA41d3a06",
+  "contractAddress": "0x87c3a6c25e49563CFB5CC48600C820aa81b329B3",
+  "contractVersion": "V5",
   "deployer": "0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1",
-  "txHash": "0xc37849dd2805809e53f495f694785877f84fdac0707e3e25870d4556a57cc6a4",
-  "blockNumber": 10977075,
-  "timestamp": "2026-06-02T21:13:02.017Z",
-  "contractVersion": "V4"
+  "trustedOracle": "0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1",
+  "privaraRouter": "0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1",
+  "txHash": "0xd87438550942c3b372b891eb83586e45878ca1f2995168fa1aa19b25a4c197d5",
+  "blockNumber": 10984720,
+  "timestamp": "2026-06-04T00:29:00.083Z"
 }
