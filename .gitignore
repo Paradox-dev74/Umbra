@@ -5,3 +5,7 @@ node_modules/
 out/
 dist/
 *.tsbuildinfo
+
+# Hardhat build output (regenerated via npm run compile:contracts)
+artifacts/
+cache/
