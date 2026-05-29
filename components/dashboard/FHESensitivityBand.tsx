@@ -10,11 +10,15 @@ import { useFhenix } from "@/hooks/useFhenix";
 import { toast } from "sonner";
 import { Radar, Lock } from "lucide-react";
 
+import type { AclRole } from "@/lib/acl-policy";
+
 interface FHESensitivityBandProps {
   proximityHandle?: `0x${string}`;
   operator?: "FHE.gte" | "FHE.lte";
   title?: string;
   embedded?: boolean;
+  aclRole?: AclRole;
+  policyStatus?: number;
 }
 
 /** On-chain proximity only — no client-side cleartext band math */
@@ -23,6 +27,8 @@ export function FHESensitivityBand({
   operator = "FHE.gte",
   title = "FHE Proximity Flag",
   embedded = false,
+  aclRole = "holder",
+  policyStatus = 0,
 }: FHESensitivityBandProps) {
   const { clientReady } = useFhenix();
   const [revealed, setRevealed] = useState(false);
@@ -59,6 +65,10 @@ export function FHESensitivityBand({
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
           <EncryptedValue
             ctHash={proximityHandle}
+            field="proximity"
+            role={aclRole}
+            policyStatus={policyStatus}
+            decryptPath="view"
             valueType="bool"
             formatBool={(raw) =>
               raw

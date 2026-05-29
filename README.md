@@ -53,6 +53,7 @@ cp .env.example .env.local
 pnpm run compile:contracts
 pnpm run export:abi
 pnpm run test:contracts
+pnpm run test:acl
 pnpm dev
 ```
 
@@ -127,7 +128,7 @@ NEXT_PUBLIC_UMBRA_ORACLE=0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1
 - [ ] `markSettled` succeeds; policy status = Settled
 - [ ] Auditor permit: read-only decrypt of assigned handles
 - [ ] Arbitrator: only assigned wallet resolves dispute
-- [ ] Build gates: `compile:contracts`, `export:abi`, `test:contracts`, `tsc --noEmit`, `build`
+- [ ] Build gates: `compile:contracts`, `export:abi`, `test:contracts`, `test:acl`, `tsc --noEmit`, `build`
 
 ---
 
@@ -140,6 +141,7 @@ NEXT_PUBLIC_UMBRA_ORACLE=0x5c56148a9a5E9FA1038243850b5B8242C8D4F1B1
 | `pnpm compile:contracts` | Hardhat compile |
 | `pnpm export:abi` | Export ABI to `lib/abi.ts` |
 | `pnpm test:contracts` | Hardhat tests |
+| `pnpm test:acl` | ACL policy matrix unit tests |
 | `pnpm deploy:sepolia` | Deploy to Sepolia |
 
 ---

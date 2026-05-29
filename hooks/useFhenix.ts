@@ -1,21 +1,21 @@
-/* ═══════════════════════════════════════════════════════════
-   Umbra Protocol — Fhenix FHE Encryption Hook
-   Uses @cofhe/react hooks — client is managed by CofheProvider.
-   ═══════════════════════════════════════════════════════════ */
-
 "use client";
 
 import { useState, useCallback } from "react";
 import { useCofheClient } from "@cofhe/react";
 import {
   encryptPolicyTerms,
-  decryptHandle,
-  decryptBoolHandle,
-  decryptHandleForTx,
   encryptComparisonInputs,
   setFhenixClient,
 } from "@/lib/fhenix";
 import type { EncryptedPolicyInputs } from "@/lib/fhenix";
+import {
+  decryptFieldForView,
+  decryptPayoutForSettlementTx,
+  AclDecryptError,
+  type DecryptIntent,
+} from "@/lib/acl-decrypt";
+import type { AclRole, EncryptedField } from "@/lib/acl-policy";
+import { getAccessExplanation } from "@/lib/acl-policy";
 
 interface PolicyEncryptionParams {
   coverageAmountUsdc: bigint;
@@ -30,7 +30,6 @@ export function useFhenix() {
   const [isEncrypting, setIsEncrypting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Sync the global singleton so non-hook code can access the client
   if (client) setFhenixClient(client);
 
   const encryptPolicy = useCallback(
@@ -39,8 +38,7 @@ export function useFhenix() {
       setIsEncrypting(true);
       setError(null);
       try {
-        const result = await encryptPolicyTerms(client, params);
-        return result;
+        return await encryptPolicyTerms(client, params);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : "Encryption failed";
         setError(message);
@@ -52,28 +50,32 @@ export function useFhenix() {
     [client]
   );
 
-  const decryptValue = useCallback(
-    async (ctHash: `0x${string}`): Promise<bigint> => {
+  const decryptForView = useCallback(
+    async (
+      role: AclRole,
+      policyStatus: number,
+      field: EncryptedField,
+      ctHash: `0x${string}`,
+      valueType: "uint64" | "bool" = "uint64"
+    ) => {
       if (!client) throw new Error("CoFHE client not ready");
-      return decryptHandle(client, ctHash);
+      return decryptFieldForView(client, role, policyStatus, field, ctHash, valueType);
     },
     [client]
   );
 
-  const decryptBool = useCallback(
-    async (ctHash: `0x${string}`): Promise<boolean> => {
+  const decryptPayoutForSettlement = useCallback(
+    async (role: AclRole, policyStatus: number, payoutHandle: `0x${string}`) => {
       if (!client) throw new Error("CoFHE client not ready");
-      return decryptBoolHandle(client, ctHash);
+      return decryptPayoutForSettlementTx(client, role, policyStatus, payoutHandle);
     },
     [client]
   );
 
-  const decryptForTx = useCallback(
-    async (ctHash: `0x${string}`) => {
-      if (!client) throw new Error("CoFHE client not ready");
-      return decryptHandleForTx(client, ctHash);
-    },
-    [client]
+  const explainAccess = useCallback(
+    (role: AclRole, policyStatus: number, field: EncryptedField, path: "view" | "tx") =>
+      getAccessExplanation(role, policyStatus, field, path),
+    []
   );
 
   const encryptComparison = useCallback(
@@ -84,16 +86,39 @@ export function useFhenix() {
     [client]
   );
 
+  /** @deprecated Prefer decryptForView with explicit field/role/status */
+  const decryptValue = useCallback(
+    async (ctHash: `0x${string}`): Promise<bigint> => {
+      if (!client) throw new Error("CoFHE client not ready");
+      const { decryptHandle } = await import("@/lib/fhenix");
+      return decryptHandle(client, ctHash);
+    },
+    [client]
+  );
+
+  const decryptBool = useCallback(
+    async (ctHash: `0x${string}`): Promise<boolean> => {
+      if (!client) throw new Error("CoFHE client not ready");
+      const { decryptBoolHandle } = await import("@/lib/fhenix");
+      return decryptBoolHandle(client, ctHash);
+    },
+    [client]
+  );
+
   return {
     clientReady: !!client,
     isConnecting: !client,
     isEncrypting,
     error,
     encryptPolicy,
+    decryptForView,
+    decryptPayoutForSettlement,
+    explainAccess,
+    encryptComparison,
     decryptValue,
     decryptBool,
-    decryptForTx,
-    encryptComparison,
+    AclDecryptError,
   };
 }
 
+export type { DecryptIntent, AclRole, EncryptedField, AclDecryptError };

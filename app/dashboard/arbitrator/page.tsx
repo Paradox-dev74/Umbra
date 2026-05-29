@@ -78,6 +78,10 @@ function DisputedPolicyCard({
         {handles.triggerHandle && (
           <EncryptedValue
             ctHash={handles.triggerHandle}
+            field="trigger"
+            role={isAssigned ? "arbitrator" : "guest"}
+            policyStatus={4}
+            decryptPath="view"
             valueType="bool"
             formatBool={(raw) => (raw ? "Trigger upheld" : "Trigger rejected")}
           />

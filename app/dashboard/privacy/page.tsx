@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useCofheClient } from "@cofhe/react";
 import { encryptComparisonInputs } from "@/lib/fhenix";
 import { useFhenix } from "@/hooks/useFhenix";
+import { useUserRoles } from "@/hooks/useUserRole";
 import {
   useGlobalExposureHandle,
   useHolderExposureHandle,
@@ -103,6 +104,7 @@ const accentBorder: Record<string, string> = {
 export default function PrivacyLabPage() {
   const client = useCofheClient();
   const { clientReady } = useFhenix();
+  const { primaryRole, aclRole } = useUserRoles();
   const { data: globalExposure } = useGlobalExposureHandle();
   const { data: holderExposure } = useHolderExposureHandle();
   const { data: ratioDivisor } = useMaxPremiumRatioDivisor();
@@ -171,6 +173,10 @@ export default function PrivacyLabPage() {
                 </div>
                 <EncryptedValue
                   ctHash={holderExposure as `0x${string}`}
+                  field="holderExposure"
+                  role={primaryRole === "guest" ? "guest" : "holder"}
+                  policyStatus={0}
+                  decryptPath="view"
                   unit="USDC"
                   format={(raw) => (Number(raw) / 1_000_000).toLocaleString()}
                   compact
@@ -190,6 +196,10 @@ export default function PrivacyLabPage() {
                 </div>
                 <EncryptedValue
                   ctHash={globalExposure as `0x${string}`}
+                  field="globalExposure"
+                  role={aclRole === "guest" ? "guest" : aclRole === "reinsurer" ? "reinsurer" : "owner"}
+                  policyStatus={0}
+                  decryptPath="view"
                   unit="USDC"
                   format={(raw) => (Number(raw) / 1_000_000).toLocaleString()}
                   compact
@@ -286,7 +296,7 @@ export default function PrivacyLabPage() {
       </FadeIn>
 
       <FadeIn delay={0.2}>
-        <PrivacyAccessPanel />
+          <PrivacyAccessPanel aclRole={aclRole} policyStatus={0} />
       </FadeIn>
     </div>
   );

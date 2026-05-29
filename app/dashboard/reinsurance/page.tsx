@@ -45,6 +45,10 @@ export default function ReinsurancePage() {
             <div className="flex items-center gap-4">
               <EncryptedValue
                 ctHash={globalExposure as `0x${string}`}
+                field="globalExposure"
+                role="reinsurer"
+                policyStatus={0}
+                decryptPath="view"
                 unit="USDC"
                 format={(raw) => (Number(raw) / 1_000_000).toLocaleString()}
               />

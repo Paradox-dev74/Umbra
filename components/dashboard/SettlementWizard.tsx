@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useFhenix } from "@/hooks/useFhenix";
 import { usePrivara } from "@/hooks/usePrivara";
+import { useUserRoles, resolveAclRole } from "@/hooks/useUserRole";
 import {
   useLinkSettlementEscrow,
   useMarkSettled,
@@ -33,7 +34,7 @@ type WizardStage =
 const STAGE_LABELS: Record<WizardStage, string> = {
   idle: "Ready",
   "decrypt-trigger": "Decrypt trigger (ebool)",
-  "decrypt-payout": "Decrypt payout amount",
+  "decrypt-payout": "Decrypt payout (tx path)",
   "create-escrow": "Privara escrow + fund",
   "link-escrow": "Link escrow on-chain",
   "mark-settled": "Mark settled",
@@ -56,7 +57,18 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
 
   const handles = usePolicyHandles(policyId);
   const { data: linkedEscrowId } = usePolicyEscrowId(policyId);
-  const { decryptBool, decryptValue, clientReady } = useFhenix();
+  const { primaryRole, aclRole: baseAclRole } = useUserRoles({
+    holder: policy.holder as `0x${string}`,
+    beneficiary: policy.beneficiary as `0x${string}`,
+    status: policy.status as number,
+  });
+  const aclRole = resolveAclRole(
+    primaryRole,
+    policy.status as number,
+    false,
+    baseAclRole === "privaraRouter"
+  );
+  const { decryptForView, decryptPayoutForSettlement, clientReady } = useFhenix();
   const { settlePolicy, progress, isSettling } = usePrivara();
   const { linkSettlementEscrow } = useLinkSettlementEscrow();
   const { markSettled } = useMarkSettled();
@@ -82,7 +94,13 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
       if (!handles.triggerHandle) {
         throw new Error("No trigger handle — resolve oracle first");
       }
-      const isTriggered = await decryptBool(handles.triggerHandle);
+      const isTriggered = (await decryptForView(
+        aclRole,
+        policy.status as number,
+        "trigger",
+        handles.triggerHandle,
+        "bool"
+      )) as boolean;
       setTriggered(isTriggered);
 
       if (!isTriggered) {
@@ -94,14 +112,12 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
       setStage("decrypt-payout");
       const payoutHandle = handles.payoutHandle ?? handles.coverageHandle;
       if (!payoutHandle) throw new Error("No payout handle available");
-      let payout: bigint;
-      try {
-        payout = await decryptValue(payoutHandle);
-      } catch {
-        payout = handles.coverageHandle
-          ? await decryptValue(handles.coverageHandle)
-          : 0n;
-      }
+
+      const { value: payout } = await decryptPayoutForSettlement(
+        aclRole,
+        policy.status as number,
+        payoutHandle
+      );
       setPayoutAmount(payout);
 
       setStage("create-escrow");
@@ -136,8 +152,9 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
     clientReady,
     policy,
     handles,
-    decryptBool,
-    decryptValue,
+    decryptForView,
+    decryptPayoutForSettlement,
+    aclRole,
     settlePolicy,
     policyId,
     linkSettlementEscrow,
@@ -185,7 +202,8 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
       <CardBody className="space-y-4">
         {!compact && (
           <p className="text-xs text-umbra-muted">
-            Sealed decrypt → Privara escrow (create, fund, redeem) → link escrow → mark settled on Umbra V5.
+            ACL-validated decryptForTx on payout → Privara escrow → link escrow → mark settled.
+            Role: <span className="text-umbra-cyan font-mono">{aclRole}</span>
           </p>
         )}
 
@@ -252,7 +270,7 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
             </div>
             {payoutAmount !== null && triggered && (
               <p className="text-xs text-umbra-muted font-mono">
-                Decrypted payout: {formatBigUSDC(payoutAmount)}
+                Tx-path payout: {formatBigUSDC(payoutAmount)}
               </p>
             )}
             {settleTxHash && (
@@ -272,7 +290,7 @@ export function SettlementWizard({ policyId, policy, compact = false }: Settleme
         {!clientReady && (
           <p className="text-xs text-umbra-warning flex items-center gap-1">
             <Lock className="w-3 h-3" />
-            CoFHE session required for sealed decrypt
+            CoFHE session required for ACL-validated decrypt
           </p>
         )}
       </CardBody>

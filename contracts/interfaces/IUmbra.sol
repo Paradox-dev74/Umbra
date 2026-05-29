@@ -85,6 +85,21 @@ interface IUmbra {
 
     event ProximityFlagUpdated(uint256 indexed policyId);
 
+    /// @notice ACL audit — path: 0=view, 1=tx (client-side decrypt intent; on-chain FHE.allow)
+    event EncryptedAccessGranted(
+        uint256 indexed policyId,
+        address indexed account,
+        uint8 fieldId,
+        uint8 accessPath
+    );
+
+    event EncryptedAccessBatchGranted(
+        uint256 indexed policyId,
+        address indexed account,
+        uint8 accessPath,
+        bytes32 fieldMask
+    );
+
     function createPolicy(
         address _beneficiary,
         uint8 _riskCategory,

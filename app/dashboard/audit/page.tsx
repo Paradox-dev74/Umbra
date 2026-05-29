@@ -4,8 +4,14 @@ import { useState } from "react";
 import { useAccount, useChainId } from "wagmi";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { setPermit, formatPermitExpiry, getPermits } from "@/lib/permits";
-import { Eye, KeyRound } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { setPermit, formatPermitExpiry, getPermits, getActivePermit } from "@/lib/permits";
+import {
+  allowedFieldsForRole,
+  DELEGATION_PRESETS,
+  policyStatusLabel,
+} from "@/lib/acl-policy";
+import { Eye, KeyRound, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AuditPortalPage() {
@@ -14,6 +20,9 @@ export default function AuditPortalPage() {
   const [importJson, setImportJson] = useState("");
 
   const permits = address ? Object.values(getPermits(chainId, address)) : [];
+  const activePermit = address ? getActivePermit(chainId, address) : null;
+
+  const auditorViewFields = allowedFieldsForRole("auditor", 0, "view");
 
   return (
     <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-8">
@@ -27,6 +36,62 @@ export default function AuditPortalPage() {
           <code className="text-umbra-violet">grantViewerAccess</code> is still required for sealed decrypt.
         </p>
       </div>
+
+      <Card glass gradientBorder>
+        <CardHeader>
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+            <Shield className="w-5 h-5 text-umbra-violet" />
+            ACL Eligibility (auditor role)
+          </h2>
+        </CardHeader>
+        <CardBody className="space-y-4 text-sm">
+          <p className="text-xs text-umbra-muted">
+            Auditors only decrypt fields explicitly granted via{" "}
+            <code className="text-umbra-cyan">grantViewerAccess</code> plus an active CoFHE sharing permit.
+            Base matrix fields without delegation:
+          </p>
+          <div className="flex flex-wrap gap-1">
+            {auditorViewFields.length === 0 ? (
+              <Badge variant="muted">None without holder delegation</Badge>
+            ) : (
+              auditorViewFields.map((f) => (
+                <Badge key={f} variant="muted" className="text-[10px] font-mono">
+                  {f}
+                </Badge>
+              ))
+            )}
+          </div>
+
+          <div className="pt-3 border-t border-white/[0.06] space-y-3">
+            <p className="text-xs text-umbra-muted uppercase tracking-wider">Delegation presets</p>
+            {Object.entries(DELEGATION_PRESETS).map(([id, preset]) => (
+              <div
+                key={id}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3"
+              >
+                <p className="text-white font-medium text-sm">{preset.label}</p>
+                <p className="text-xs text-umbra-muted mt-1">{preset.description}</p>
+                <p className="text-[10px] text-umbra-cyan mt-2 font-mono">
+                  Path: {preset.path}
+                  {"issuePermit" in preset && preset.issuePermit ? " · issues CoFHE permit" : ""}
+                  {"globalExposureOnly" in preset && preset.globalExposureOnly
+                    ? " · owner global exposure grant"
+                    : ""}
+                </p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {Object.entries(preset.fields)
+                    .filter(([, enabled]) => enabled)
+                    .map(([field]) => (
+                      <Badge key={field} variant="muted" className="text-[9px] font-mono">
+                        {field}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardBody>
+      </Card>
 
       <Card glass gradientBorder>
         <CardHeader>
@@ -48,10 +113,27 @@ export default function AuditPortalPage() {
                 key={p.hash}
                 className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3 text-sm"
               >
-                <p className="text-white font-medium">{p.name ?? "Audit permit"}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-white font-medium">{p.name ?? "Audit permit"}</p>
+                  {activePermit?.hash === p.hash && (
+                    <Badge variant="success" className="text-[9px]">
+                      Active
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-umbra-muted font-mono mt-1">
                   {p.type} · expires {formatPermitExpiry(p.expiration)}
                 </p>
+                {"issuer" in p && p.issuer && (
+                  <p className="text-[10px] text-umbra-muted font-mono mt-1">
+                    Issuer: {(p.issuer as string).slice(0, 10)}…
+                  </p>
+                )}
+                {"recipient" in p && p.recipient && (
+                  <p className="text-[10px] text-umbra-muted font-mono">
+                    Recipient: {(p.recipient as string).slice(0, 10)}…
+                  </p>
+                )}
                 <p className="text-[10px] text-umbra-muted font-mono mt-1 truncate">{p.hash}</p>
               </div>
             ))
@@ -85,7 +167,8 @@ export default function AuditPortalPage() {
               Import permit
             </Button>
             <p className="text-[10px] text-umbra-muted mt-2">
-              Paste JSON shared by a policy holder. On-chain ACL via grantViewerAccess is still required for sealed decrypt.
+              Lifecycle note: delegated view access applies while policy status is{" "}
+              {policyStatusLabel(0)} through {policyStatusLabel(1)} unless holder revokes via permit expiry.
             </p>
           </div>
         </CardBody>

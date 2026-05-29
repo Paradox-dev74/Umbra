@@ -18,7 +18,7 @@ import { SettlementWizard } from "@/components/dashboard/SettlementWizard";
 import { PolicyTimeline, policyStatusToTimelineStep } from "@/components/dashboard/PolicyTimeline";
 import { RoleBanner } from "@/components/dashboard/RoleBanner";
 import { PrivacyAccessPanel } from "@/components/dashboard/PrivacyAccessPanel";
-import { useUserRoles } from "@/hooks/useUserRole";
+import { useUserRoles, useIsAssignedArbitrator, resolveAclRole } from "@/hooks/useUserRole";
 import {
   RISK_CATEGORIES,
   ORACLE_FEEDS,
@@ -159,11 +159,23 @@ export default function PolicyDetailPage() {
   const liveOracle = feedKey ? getOracleValueForFeed(feedKey, chainlinkPrices) : null;
   const isHolder =
     !!address && (policy.holder as string).toLowerCase() === address.toLowerCase();
-  const { roles } = useUserRoles({
+  const { roles, primaryRole, aclRole: baseAclRole } = useUserRoles({
     holder: policy.holder as `0x${string}`,
     beneficiary: policy.beneficiary as `0x${string}`,
     status: policy.status as number,
   });
+  const isArbitrator = useIsAssignedArbitrator(policyId);
+  const aclRole = resolveAclRole(
+    primaryRole,
+    policy.status as number,
+    isArbitrator,
+    baseAclRole === "privaraRouter"
+  );
+  const aclCommon = {
+    role: aclRole,
+    policyStatus: policy.status as number,
+    decryptPath: "view" as const,
+  };
   const isExpiredByBlock =
     blockNumber !== undefined && blockNumber > policy.expiryBlock;
   const isBand = isIndexBandPolicy(policy);
@@ -304,6 +316,8 @@ export default function PolicyDetailPage() {
                   </label>
                   <EncryptedValue
                     ctHash={handles.coverageHandle}
+                    field="coverage"
+                    {...aclCommon}
                     unit="USDC"
                     format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                   />
@@ -316,6 +330,8 @@ export default function PolicyDetailPage() {
                   </label>
                   <EncryptedValue
                     ctHash={handles.premiumHandle}
+                    field="premium"
+                    {...aclCommon}
                     unit="USDC"
                     format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                   />
@@ -330,6 +346,8 @@ export default function PolicyDetailPage() {
                       </label>
                       <EncryptedValue
                         ctHash={handles.floorHandle}
+                        field="floor"
+                        {...aclCommon}
                         unit={oracleFeed?.unit ?? ""}
                         format={(raw) => raw.toString()}
                       />
@@ -340,6 +358,8 @@ export default function PolicyDetailPage() {
                       </label>
                       <EncryptedValue
                         ctHash={handles.ceilingHandle}
+                        field="ceiling"
+                        {...aclCommon}
                         unit={oracleFeed?.unit ?? ""}
                         format={(raw) => raw.toString()}
                       />
@@ -352,6 +372,8 @@ export default function PolicyDetailPage() {
                     </label>
                     <EncryptedValue
                       ctHash={handles.thresholdHandle}
+                      field="threshold"
+                      {...aclCommon}
                       unit={oracleFeed?.unit ?? ""}
                       format={(raw) => raw.toString()}
                     />
@@ -365,6 +387,8 @@ export default function PolicyDetailPage() {
                     </label>
                     <EncryptedValue
                       ctHash={handles.deductibleHandle}
+                      field="deductible"
+                      {...aclCommon}
                       unit="USDC"
                       format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                     />
@@ -377,6 +401,8 @@ export default function PolicyDetailPage() {
                   </label>
                   <EncryptedValue
                     ctHash={handles.ratioValidHandle}
+                    field="ratioValid"
+                    {...aclCommon}
                     valueType="bool"
                     formatBool={(raw) =>
                       raw ? "✓ Within max ratio (FHE.lte)" : "✗ Ratio exceeded"
@@ -395,6 +421,7 @@ export default function PolicyDetailPage() {
                 proximityHandle={handles.proximityHandle}
                 policyMode={policy.policyMode as number}
                 status={policy.status as number}
+                aclRole={aclRole}
               />
 
               {/* Trigger result — shown after oracle resolves */}
@@ -406,6 +433,8 @@ export default function PolicyDetailPage() {
                     </label>
                     <EncryptedValue
                       ctHash={handles.triggerHandle}
+                      field="trigger"
+                      {...aclCommon}
                       valueType="bool"
                       formatBool={(raw) => (raw ? "✓ Triggered" : "✗ Not Triggered")}
                     />
@@ -417,6 +446,8 @@ export default function PolicyDetailPage() {
                       </label>
                       <EncryptedValue
                         ctHash={handles.payoutHandle}
+                        field="payout"
+                        {...aclCommon}
                         unit="USDC"
                         format={(raw) => "$" + (Number(raw) / 1_000_000).toLocaleString()}
                       />
@@ -588,7 +619,7 @@ export default function PolicyDetailPage() {
               )}
             </CardBody>
           </Card>
-          <PrivacyAccessPanel policyId={policyId} />
+          <PrivacyAccessPanel policyId={policyId} aclRole={aclRole} policyStatus={policy.status as number} />
         </div>
       </div>
     </div>

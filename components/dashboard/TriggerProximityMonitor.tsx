@@ -13,6 +13,7 @@ import { UMBRA_TRUSTED_ORACLE, UMBRA_V3_FEATURES } from "@/lib/constants";
 import { getOracleValueForFeed, resolveFeedKeyFromAddress } from "@/lib/oracle-utils";
 import { RISK_CATEGORIES } from "@/lib/constants";
 import { FHESensitivityBand } from "@/components/dashboard/FHESensitivityBand";
+import type { AclRole } from "@/lib/acl-policy";
 import { toast } from "sonner";
 import { Gauge, Zap } from "lucide-react";
 
@@ -26,6 +27,7 @@ interface TriggerProximityMonitorProps {
   proximityHandle?: `0x${string}`;
   policyMode?: number;
   status: number;
+  aclRole?: AclRole;
 }
 
 export function TriggerProximityMonitor({
@@ -37,9 +39,10 @@ export function TriggerProximityMonitor({
   proximityHandle,
   policyMode = 0,
   status,
+  aclRole = "holder",
 }: TriggerProximityMonitorProps) {
   const { address } = useAccount();
-  const { decryptBool, clientReady } = useFhenix();
+  const { decryptForView, clientReady } = useFhenix();
   const { refreshProximity, isPending: isRefreshing } = useRefreshProximityFromChainlink();
   const chainlinkPrices = useChainlinkPrices();
   const isOracle =
@@ -53,6 +56,12 @@ export function TriggerProximityMonitor({
   const live = feedKey ? getOracleValueForFeed(feedKey, chainlinkPrices) : null;
   const operator = isBand ? "FHE.and(gte,lte)" : (category?.fheOperator ?? "FHE.gte");
   const liveOracle = live?.value ?? 0;
+
+  const aclCommon = {
+    role: aclRole,
+    policyStatus: status,
+    decryptPath: "view" as const,
+  };
 
   if (status !== 0 || (!proximityHandle && !UMBRA_V3_FEATURES)) return null;
 
@@ -73,8 +82,8 @@ export function TriggerProximityMonitor({
         error: (e: unknown) => (e instanceof Error ? e.message : "Update failed"),
       });
       if (proximityHandle) {
-        const flag = await decryptBool(proximityHandle);
-        setOnChainFlag(flag);
+        const flag = await decryptForView(aclRole, status, "proximity", proximityHandle, "bool");
+        setOnChainFlag(flag as boolean);
       }
     } catch {
       /* toast handles */
@@ -127,6 +136,8 @@ export function TriggerProximityMonitor({
               proximityHandle={proximityHandle}
               operator={category?.fheOperator === "FHE.lte" ? "FHE.lte" : "FHE.gte"}
               title={isBand ? "Index Band Proximity" : "Threshold Proximity"}
+              aclRole={aclRole}
+              policyStatus={status}
             />
           )}
 
@@ -140,11 +151,23 @@ export function TriggerProximityMonitor({
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/[0.06]">
               <div>
                 <label className="text-[10px] text-umbra-muted">Floor (encrypted)</label>
-                <EncryptedValue ctHash={floorHandle} format={(raw) => raw.toString()} compact />
+                <EncryptedValue
+                  ctHash={floorHandle}
+                  field="floor"
+                  {...aclCommon}
+                  format={(raw) => raw.toString()}
+                  compact
+                />
               </div>
               <div>
                 <label className="text-[10px] text-umbra-muted">Ceiling (encrypted)</label>
-                <EncryptedValue ctHash={ceilingHandle} format={(raw) => raw.toString()} compact />
+                <EncryptedValue
+                  ctHash={ceilingHandle}
+                  field="ceiling"
+                  {...aclCommon}
+                  format={(raw) => raw.toString()}
+                  compact
+                />
               </div>
             </div>
           )}

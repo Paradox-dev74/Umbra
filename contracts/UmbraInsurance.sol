@@ -44,6 +44,18 @@ contract UmbraInsurance is IUmbra {
     uint64 public maxPremiumRatioDivisor = 20;
     uint256 public oracleMaxStaleness = 3600;
 
+    /// @dev fieldId for EncryptedAccessGranted events (matches lib/acl-policy.ts)
+    uint8 internal constant FIELD_COVERAGE = 0;
+    uint8 internal constant FIELD_PREMIUM = 1;
+    uint8 internal constant FIELD_THRESHOLD = 2;
+    uint8 internal constant FIELD_DEDUCTIBLE = 3;
+    uint8 internal constant FIELD_RATIO = 4;
+    uint8 internal constant FIELD_TRIGGER = 5;
+    uint8 internal constant FIELD_PAYOUT = 6;
+    uint8 internal constant FIELD_PROXIMITY = 7;
+    uint8 internal constant PATH_VIEW = 0;
+    uint8 internal constant PATH_TX = 1;
+
     modifier onlyOwner() {
         require(msg.sender == owner, "Umbra: not owner");
         _;
@@ -62,6 +74,14 @@ contract UmbraInsurance is IUmbra {
     modifier policyExists(uint256 policyId) {
         require(policyId < nextPolicyId, "Umbra: not found");
         _;
+    }
+
+    function _emitAccess(uint256 policyId, address account, uint8 fieldId, uint8 path) private {
+        emit EncryptedAccessGranted(policyId, account, fieldId, path);
+    }
+
+    function _emitAccessBatch(uint256 policyId, address account, uint8 path, bytes32 mask) private {
+        emit EncryptedAccessBatchGranted(policyId, account, path, mask);
     }
 
     constructor(address _trustedOracle, address _privaraRouter) {
@@ -249,6 +269,8 @@ contract UmbraInsurance is IUmbra {
         premiumLocked[policyId] = true;
 
         emit PolicyCreated(policyId, msg.sender, _beneficiary, _riskCategory, _policyHash);
+        _emitAccessBatch(policyId, msg.sender, PATH_VIEW, bytes32(uint256(0x3F)));
+        _emitAccessBatch(policyId, _beneficiary, PATH_VIEW, bytes32(uint256(0x3F)));
     }
 
     function _refundPremium(uint256 policyId) private {
@@ -430,6 +452,15 @@ contract UmbraInsurance is IUmbra {
         _encPayoutAmount[policyId] = encPayout;
         _encProximityFlag[policyId] = encFinalTrigger;
 
+        _emitAccess(policyId, policy.holder, FIELD_TRIGGER, PATH_VIEW);
+        _emitAccess(policyId, policy.beneficiary, FIELD_TRIGGER, PATH_VIEW);
+        _emitAccess(policyId, trustedOracle, FIELD_TRIGGER, PATH_VIEW);
+        _emitAccess(policyId, policy.holder, FIELD_PAYOUT, PATH_VIEW);
+        _emitAccess(policyId, policy.beneficiary, FIELD_PAYOUT, PATH_VIEW);
+        _emitAccess(policyId, policy.holder, FIELD_PAYOUT, PATH_TX);
+        _emitAccess(policyId, policy.beneficiary, FIELD_PAYOUT, PATH_TX);
+        _emitAccess(policyId, privaraRouter, FIELD_PAYOUT, PATH_TX);
+
         policy.status = PolicyStatus.OracleTriggered;
         policy.resolvedBlock = block.number;
 
@@ -596,6 +627,18 @@ contract UmbraInsurance is IUmbra {
             FHE.allow(_encProximityFlag[policyId], viewer);
         }
 
+        uint256 maskBits =
+            (allowCoverage ? 1 : 0) |
+            (allowPremium ? 2 : 0) |
+            (allowThreshold ? 4 : 0) |
+            (allowDeductible ? 8 : 0) |
+            (allowRatioValid ? 16 : 0) |
+            (allowTrigger ? 32 : 0) |
+            (allowPayout ? 64 : 0) |
+            (allowProximity ? 128 : 0);
+        bytes32 mask = bytes32(maskBits);
+        _emitAccessBatch(policyId, viewer, PATH_VIEW, mask);
+
         emit ViewerAccessGranted(
             policyId,
             viewer,
@@ -619,6 +662,7 @@ contract UmbraInsurance is IUmbra {
         if (FHE.isInitialized(_encGlobalExposure)) {
             FHE.allow(_encGlobalExposure, viewer);
         }
+        _emitAccess(0, viewer, FIELD_COVERAGE, PATH_VIEW); // policyId 0 = global exposure sentinel
         emit GlobalExposureViewerGranted(viewer);
     }
 
@@ -678,6 +722,8 @@ contract UmbraInsurance is IUmbra {
         if (FHE.isInitialized(_encProximityFlag[policyId])) {
             FHE.allow(_encProximityFlag[policyId], arbitrator);
         }
+
+        _emitAccessBatch(policyId, arbitrator, PATH_VIEW, bytes32(uint256(0xF0)));
 
         emit PolicyDisputed(policyId, msg.sender, arbitrator);
     }

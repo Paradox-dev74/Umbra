@@ -69,4 +69,32 @@ describe("UmbraInsurance V5", function () {
     await contract.setOracleMaxStaleness(7200);
     assert.equal(await contract.oracleMaxStaleness(), 7200n);
   });
+
+  it("emits EncryptedAccessGranted on global exposure viewer grant", async function () {
+    const contract = await deploy();
+    const tx = await contract.grantGlobalExposureViewer(arbitrator.address);
+    const receipt = await tx.wait();
+    const topic = contract.interface.getEvent("EncryptedAccessGranted").topicHash;
+    const log = receipt.logs.find((l) => l.topics[0] === topic);
+    assert.ok(log, "EncryptedAccessGranted event not emitted");
+    const parsed = contract.interface.parseLog({ topics: log.topics, data: log.data });
+    assert.equal(parsed.args[0], 0n);
+    assert.equal(parsed.args[1].toLowerCase(), arbitrator.address.toLowerCase());
+    assert.equal(Number(parsed.args[2]), 0);
+    assert.equal(Number(parsed.args[3]), 0);
+  });
+
+  it("tracks global exposure viewer ACL flag", async function () {
+    const contract = await deploy();
+    await contract.grantGlobalExposureViewer(arbitrator.address);
+    assert.equal(await contract.isGlobalExposureViewer(arbitrator.address), true);
+  });
+
+  it("exposes EncryptedAccessGranted event in ABI", async function () {
+    const contract = await deploy();
+    const iface = contract.interface;
+    assert.ok(iface.getEvent("EncryptedAccessGranted"));
+    assert.ok(iface.getEvent("EncryptedAccessBatchGranted"));
+    assert.ok(iface.getEvent("ViewerAccessGranted"));
+  });
 });

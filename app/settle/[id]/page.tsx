@@ -22,6 +22,7 @@ import {
   isValidPolicy,
 } from "@/hooks/useUmbraContract";
 import { useFhenix } from "@/hooks/useFhenix";
+import { useUserRoles, resolveAclRole } from "@/hooks/useUserRole";
 import { usePrivara } from "@/hooks/usePrivara";
 import { txHashToBytes32 } from "@/lib/fhenix";
 import { useChainlinkPrices } from "@/hooks/useChainlinkPrice";
@@ -98,7 +99,24 @@ export default function SettlementPage() {
   const { markSettled } = useMarkSettled();
   const { linkSettlementEscrow } = useLinkSettlementEscrow();
   const { settlePolicy, progress } = usePrivara();
-  const { decryptBool, decryptValue, clientReady } = useFhenix();
+  const { primaryRole, aclRole: baseAclRole } = useUserRoles(
+    policy
+      ? {
+          holder: policy.holder as `0x${string}`,
+          beneficiary: policy.beneficiary as `0x${string}`,
+          status: policy.status as number,
+        }
+      : undefined
+  );
+  const aclRole = policy
+    ? resolveAclRole(
+        primaryRole,
+        policy.status as number,
+        false,
+        baseAclRole === "privaraRouter"
+      )
+    : "guest";
+  const { decryptForView, decryptPayoutForSettlement, clientReady } = useFhenix();
   const chainlinkPrices = useChainlinkPrices();
 
   const category = policy
@@ -127,7 +145,13 @@ export default function SettlementPage() {
       if (!handles.triggerHandle) {
         throw new Error("No trigger result handle — resolve oracle first");
       }
-      const isTriggered = await decryptBool(handles.triggerHandle);
+      const isTriggered = (await decryptForView(
+        aclRole,
+        policy.status as number,
+        "trigger",
+        handles.triggerHandle,
+        "bool"
+      )) as boolean;
       setTriggered(isTriggered);
 
       if (!isTriggered) {
@@ -144,11 +168,23 @@ export default function SettlementPage() {
       }
       let payout: bigint;
       try {
-        payout = await decryptValue(payoutHandle);
+        const result = await decryptPayoutForSettlement(
+          aclRole,
+          policy.status as number,
+          payoutHandle
+        );
+        payout = result.value;
       } catch {
-        payout = handles.coverageHandle
-          ? await decryptValue(handles.coverageHandle)
-          : 0n;
+        if (handles.coverageHandle) {
+          const fallback = await decryptPayoutForSettlement(
+            aclRole,
+            policy.status as number,
+            handles.coverageHandle
+          );
+          payout = fallback.value;
+        } else {
+          payout = 0n;
+        }
       }
       setPayoutAmount(payout);
 
@@ -187,8 +223,9 @@ export default function SettlementPage() {
     policy,
     clientReady,
     handles,
-    decryptBool,
-    decryptValue,
+    decryptForView,
+    decryptPayoutForSettlement,
+    aclRole,
     settlePolicy,
     policyId,
     markSettled,

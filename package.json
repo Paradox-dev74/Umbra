@@ -9,7 +9,8 @@
     "compile:contracts": "hardhat compile --config hardhat.config.cjs",
     "export:abi": "node scripts/export-abi.cjs",
     "deploy:sepolia": "node scripts/deploy.cjs",
-    "test:contracts": "hardhat test --config hardhat.config.cjs"
+    "test:contracts": "hardhat test --config hardhat.config.cjs",
+    "test:acl": "npx tsx test/acl-policy.test.ts"
   },
   "dependencies": {
     "@cofhe/abi": "^0.4.0",
